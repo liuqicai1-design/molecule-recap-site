@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>产品分子式研究进展查询</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23196d68'/%3E%3Cpath d='M10 22 22 10M12 9h10v10M9 12a7 7 0 0 0 11 8' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="view-home">
+    <header class="home-hero" id="home">
+      <nav class="site-nav" aria-label="页面导航">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M10.5 3.8a4.7 4.7 0 0 1 6.6 6.6l-6.7 6.7a4.7 4.7 0 0 1-6.6-6.6l1.5-1.5" />
+              <path d="M13.5 20.2a4.7 4.7 0 0 1-6.6-6.6l6.7-6.7a4.7 4.7 0 0 1 6.6 6.6l-1.5 1.5" />
+            </svg>
+          </div>
+          <div>
+            <strong>产品分子式研究进展</strong>
+            <span id="metaLine">正在载入数据</span>
+          </div>
+        </div>
+        <button class="nav-link" id="navQuery" type="button">查询工作台</button>
+      </nav>
+
+      <div class="hero-layout">
+        <div class="hero-copy">
+          <p class="eyebrow">Monthly Recap Intelligence</p>
+          <h1>产品与竞品分子式研究进展查询</h1>
+          <p class="hero-lead">按产品、竞品分子、来源与证据等级追踪新发研究和医学报道。</p>
+          <div class="hero-actions" aria-label="首页入口">
+            <button class="action-button primary" id="jumpQuery" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+              开始查询
+            </button>
+          </div>
+        </div>
+        <section class="hero-stats" id="homeStats" aria-label="数据总览"></section>
+      </div>
+    </header>
+
+    <section class="overview-section" id="overview" aria-label="首页概览">
+      <div class="overview-tabs" aria-label="概览切换">
+        <button class="overview-tab active" type="button" data-overview="products">产品范围</button>
+        <button class="overview-tab" type="button" data-overview="competitors">竞品分子</button>
+        <button class="overview-tab" type="button" data-overview="sources">信息来源</button>
+        <button class="overview-tab" type="button" data-overview="filters">筛选条件</button>
+      </div>
+      <div class="overview-panel" id="overviewPanel"></div>
+    </section>
+
+    <section class="query-section" id="query">
+      <div class="query-heading">
+        <div>
+          <p class="eyebrow">Research Updates</p>
+          <h2>查询工作台</h2>
+        </div>
+        <div class="header-actions">
+          <button class="icon-button" id="backHome" type="button" title="返回首页" aria-label="返回首页">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 12H5" />
+              <path d="m11 18-6-6 6-6" />
+            </svg>
+            <span>返回首页</span>
+          </button>
+          <button class="icon-button" id="resetButton" type="button" title="重置筛选" aria-label="重置筛选">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7" />
+              <path d="M3 4v5h5" />
+            </svg>
+            <span>重置</span>
+          </button>
+          <button class="icon-button primary" id="exportButton" type="button" title="导出当前结果" aria-label="导出当前结果">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+            <span>导出</span>
+          </button>
+        </div>
+      </div>
+
+      <section class="filters top-filters" id="filtersPanel" aria-label="筛选">
+        <div class="filter-panel-head">
+          <div>
+            <h3>筛选条件</h3>
+            <p>按关键词、产品、来源、证据和时间快速缩小结果范围</p>
+          </div>
+          <button class="icon-button" id="toggleFilters" type="button" aria-expanded="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            <span>隐藏筛选</span>
+          </button>
+        </div>
+
+        <div class="filter-body" id="filterBody">
+          <div class="filter-group keyword-filter">
+            <label for="queryInput">关键词</label>
+            <div class="search-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m16.5 16.5 4 4" />
+              </svg>
+              <input id="queryInput" type="search" autocomplete="off" placeholder="标题、分子、摘要、链接" />
+            </div>
+          </div>
+
+          <div class="filter-group category-filter">
+            <label>分类</label>
+            <div class="segmented" id="categoryFilter"></div>
+          </div>
+
+          <div class="filter-group">
+            <label for="taFilter">TA</label>
+            <select id="taFilter"></select>
+          </div>
+
+          <div class="filter-group">
+            <label for="sourceFilter">来源</label>
+            <select id="sourceFilter"></select>
+          </div>
+
+          <div class="filter-group">
+            <label for="evidenceFilter">证据</label>
+            <select id="evidenceFilter"></select>
+          </div>
+
+          <div class="filter-group">
+            <label for="dateStart">开始</label>
+            <input id="dateStart" type="date" />
+          </div>
+
+          <div class="filter-group">
+            <label for="dateEnd">结束</label>
+            <input id="dateEnd" type="date" />
+          </div>
+
+          <label class="toggle-line" for="followOnly">
+            <input id="followOnly" type="checkbox" />
+            <span>只看建议跟进</span>
+          </label>
+
+          <div class="filter-group product-filter">
+            <label>产品</label>
+            <div class="product-grid" id="productFilter"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats" id="statsGrid" aria-label="统计概览"></section>
+
+      <div class="workspace">
+        <main class="results-panel">
+          <div class="results-toolbar">
+            <div>
+              <strong id="resultCount">0 条</strong>
+              <span id="activeFilters"></span>
+            </div>
+            <div class="toolbar-controls">
+              <label for="pageSize">每页</label>
+              <select id="pageSize">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+              </select>
+              <label for="sortSelect">排序</label>
+              <select id="sortSelect">
+                <option value="date-desc">时间新到旧</option>
+                <option value="date-asc">时间旧到新</option>
+                <option value="product">产品</option>
+                <option value="evidence">证据等级</option>
+              </select>
+            </div>
+          </div>
+
+          <aside class="detail-panel" id="detailPanel" aria-label="详情" hidden>
+            <div class="detail-content" id="detailContent">
+              <div class="detail-head">
+                <div>
+                  <span class="pill" id="detailCategory"></span>
+                  <h2 id="detailTitle"></h2>
+                </div>
+                <button class="icon-only" id="closeDetail" type="button" title="关闭详情" aria-label="关闭详情">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </button>
+              </div>
+              <dl id="detailFields"></dl>
+              <a class="source-link" id="detailLink" href="#" target="_blank" rel="noreferrer">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 17 17 7" />
+                  <path d="M8 7h9v9" />
+                </svg>
+                打开原始链接
+              </a>
+            </div>
+          </aside>
+
+          <div class="table-scrollbar" id="tableScrollBar" aria-label="表格横向滚动条">
+            <div id="tableScrollSpacer"></div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>分类</th>
+                  <th>TA</th>
+                  <th>产品</th>
+                  <th>产品/竞品</th>
+                  <th>来源</th>
+                  <th>标题/事件</th>
+                  <th>核心内容摘要</th>
+                  <th>证据</th>
+                  <th>跟进</th>
+                  <th>链接</th>
+                </tr>
+              </thead>
+              <tbody id="resultBody"></tbody>
+            </table>
+          </div>
+
+          <div class="pager">
+            <button class="icon-only" id="prevPage" type="button" title="上一页" aria-label="上一页">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <span id="pageInfo">1 / 1</span>
+            <button class="icon-only" id="nextPage" type="button" title="下一页" aria-label="下一页">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <div class="floating-table-scrollbar" id="floatingTableScrollBar" aria-label="悬浮表格横向滚动条">
+      <div id="floatingTableScrollSpacer"></div>
+    </div>
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
