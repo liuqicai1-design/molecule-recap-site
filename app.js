@@ -519,6 +519,7 @@
     els.floatingTableScrollSpacer.style.width = `${table.scrollWidth}px`;
     els.tableScrollBar.scrollLeft = els.tableWrap.scrollLeft;
     els.floatingTableScrollBar.scrollLeft = els.tableWrap.scrollLeft;
+    els.tableScrollBar.classList.toggle("hidden", !needsHorizontalScroll);
     els.floatingTableScrollBar.classList.toggle("visible", needsHorizontalScroll && isTableInView);
   }
 
@@ -632,6 +633,21 @@
     return span;
   }
 
+  function categoryPill(value) {
+    const span = pill(value);
+    const text = String(value || "");
+    const parts = text.length === 4 ? [text.slice(0, 2), text.slice(2)] : [text || "-"];
+    span.classList.add("category-pill");
+    span.replaceChildren(
+      ...parts.map((part) => {
+        const line = document.createElement("span");
+        line.textContent = part;
+        return line;
+      }),
+    );
+    return span;
+  }
+
   function makeCell(text, className) {
     const td = document.createElement("td");
     if (className) td.className = className;
@@ -737,7 +753,8 @@
         });
 
         const categoryCell = document.createElement("td");
-        categoryCell.appendChild(pill(row["分类"]));
+        categoryCell.className = "category-cell";
+        categoryCell.appendChild(categoryPill(row["分类"]));
         const evidenceCell = document.createElement("td");
         evidenceCell.className = "evidence-cell";
         evidenceCell.appendChild(pill(row["证据等级"]));

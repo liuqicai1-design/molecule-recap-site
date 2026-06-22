@@ -90,8 +90,7 @@ p {
 
 .site-nav,
 .hero-layout,
-.overview-section,
-.query-section {
+.overview-section {
   max-width: 1500px;
   margin: 0 auto;
 }
@@ -443,7 +442,10 @@ h1 {
 
 .query-section {
   min-height: 100vh;
-  padding: 28px 32px 38px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 20px 16px 38px;
 }
 
 .query-heading {
@@ -720,10 +722,14 @@ input[type="date"] {
   border-bottom: 1px solid var(--line);
 }
 
+.table-scrollbar.hidden {
+  display: none;
+}
+
 .floating-table-scrollbar {
   position: fixed;
-  left: 32px;
-  right: 32px;
+  left: 16px;
+  right: 16px;
   bottom: 10px;
   z-index: 50;
   height: 28px;
@@ -783,9 +789,65 @@ input[type="date"] {
 
 table {
   width: 100%;
-  min-width: 1480px;
+  min-width: 1380px;
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed;
+}
+
+thead th:nth-child(1),
+tbody tr:not(.detail-row) td:nth-child(1) {
+  width: 112px;
+}
+
+thead th:nth-child(2),
+tbody tr:not(.detail-row) td:nth-child(2) {
+  width: 74px;
+}
+
+thead th:nth-child(3),
+tbody tr:not(.detail-row) td:nth-child(3) {
+  width: 68px;
+}
+
+thead th:nth-child(4),
+tbody tr:not(.detail-row) td:nth-child(4) {
+  width: 104px;
+}
+
+thead th:nth-child(5),
+tbody tr:not(.detail-row) td:nth-child(5) {
+  width: 280px;
+}
+
+thead th:nth-child(6),
+tbody tr:not(.detail-row) td:nth-child(6) {
+  width: 108px;
+}
+
+thead th:nth-child(7),
+tbody tr:not(.detail-row) td:nth-child(7) {
+  width: 360px;
+}
+
+thead th:nth-child(8),
+tbody tr:not(.detail-row) td:nth-child(8) {
+  width: auto;
+}
+
+thead th:nth-child(9),
+tbody tr:not(.detail-row) td:nth-child(9) {
+  width: 70px;
+}
+
+thead th:nth-child(10),
+tbody tr:not(.detail-row) td:nth-child(10) {
+  width: 70px;
+}
+
+thead th:nth-child(11),
+tbody tr:not(.detail-row) td:nth-child(11) {
+  width: 64px;
 }
 
 th,
@@ -838,6 +900,10 @@ tbody tr.selected td {
   white-space: nowrap;
 }
 
+.category-cell {
+  text-align: center;
+}
+
 .product-cell {
   min-width: 86px;
 }
@@ -867,6 +933,22 @@ tbody tr.selected td {
   color: var(--teal-dark);
   font-size: 12px;
   font-weight: 900;
+}
+
+.category-pill {
+  width: 42px;
+  min-height: 58px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  margin: 0 auto;
+  padding: 6px 4px;
+  line-height: 1.18;
+  white-space: nowrap;
+}
+
+.category-pill span {
+  display: block;
 }
 
 .pill.medical {
