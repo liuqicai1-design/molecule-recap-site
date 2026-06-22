@@ -38,6 +38,22 @@ body.view-query {
   padding-bottom: 46px;
 }
 
+body.auth-locked {
+  min-height: 100vh;
+  padding-bottom: 0;
+  background:
+    linear-gradient(90deg, rgba(245, 250, 248, 0.96) 0%, rgba(245, 250, 248, 0.76) 100%),
+    url("./assets/molecule-map.png") center / cover no-repeat;
+}
+
+body.auth-locked > :not(.login-screen) {
+  display: none !important;
+}
+
+body:not(.auth-locked) .login-screen {
+  display: none;
+}
+
 body.view-home .query-section,
 body.view-query .home-hero,
 body.view-query .overview-section {
@@ -155,6 +171,64 @@ p {
 
 button.nav-link {
   font: inherit;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-panel {
+  width: min(100%, 430px);
+  display: grid;
+  gap: 18px;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(217, 225, 222, 0.95);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.login-mark {
+  box-shadow: none;
+}
+
+.login-panel h1 {
+  margin-top: 8px;
+  font-size: 30px;
+}
+
+.login-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.login-fields input {
+  height: 42px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfdfc;
+  color: var(--ink);
+  padding: 0 11px;
+}
+
+.login-error {
+  min-height: 20px;
+  color: var(--warn);
+  font-weight: 800;
+}
+
+.login-button {
+  justify-content: center;
 }
 
 .hero-layout {
