@@ -88,12 +88,6 @@
     pageInfo: document.getElementById("pageInfo"),
     resetButton: document.getElementById("resetButton"),
     exportButton: document.getElementById("exportButton"),
-    detailPanel: document.getElementById("detailPanel"),
-    detailCategory: document.getElementById("detailCategory"),
-    detailTitle: document.getElementById("detailTitle"),
-    detailFields: document.getElementById("detailFields"),
-    detailLink: document.getElementById("detailLink"),
-    closeDetail: document.getElementById("closeDetail"),
     tableWrap: document.querySelector(".table-wrap"),
     tableScrollBar: document.getElementById("tableScrollBar"),
     tableScrollSpacer: document.getElementById("tableScrollSpacer"),
@@ -489,7 +483,6 @@
     });
     els.resetButton.addEventListener("click", resetFilters);
     els.exportButton.addEventListener("click", exportCsv);
-    els.closeDetail.addEventListener("click", () => clearDetail(true));
     els.toggleFilters.addEventListener("click", toggleFilters);
     wireTableScroll();
   }
@@ -646,6 +639,77 @@
     return td;
   }
 
+  function buildDetailContent(row) {
+    const content = document.createElement("div");
+    content.className = "detail-content";
+
+    const head = document.createElement("div");
+    head.className = "detail-head";
+    const titleWrap = document.createElement("div");
+    const category = pill(row["分类"]);
+    const title = document.createElement("h2");
+    title.textContent = row["标题/事件"];
+    titleWrap.append(category, title);
+
+    const closeButton = document.createElement("button");
+    closeButton.className = "icon-only";
+    closeButton.type = "button";
+    closeButton.title = "关闭详情";
+    closeButton.setAttribute("aria-label", "关闭详情");
+    closeButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+    closeButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      clearDetail(true);
+    });
+    head.append(titleWrap, closeButton);
+
+    const fields = [
+      ["产品", row["产品"]],
+      ["TA", row["TA"]],
+      ["产品/竞品", row["产品/竞品"]],
+      ["活性成分/分子式追踪口径", row["活性成分/分子式追踪口径"]],
+      ["研究/论文发布时间", row["研究/论文发布时间"]],
+      ["来源", row["来源"]],
+      ["核心内容摘要", row["核心内容摘要"]],
+      ["影响判断", row["影响判断"]],
+      ["证据等级", row["证据等级"]],
+      ["是否建议跟进", row["是否建议跟进"]],
+    ];
+
+    const definitionList = document.createElement("dl");
+    definitionList.replaceChildren(
+      ...fields.flatMap(([label, value]) => {
+        const dt = document.createElement("dt");
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.textContent = value || "-";
+        return [dt, dd];
+      }),
+    );
+
+    const sourceLink = document.createElement("a");
+    sourceLink.className = "source-link";
+    sourceLink.href = row["原始链接"] || "#";
+    sourceLink.target = "_blank";
+    sourceLink.rel = "noreferrer";
+    sourceLink.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>打开原始链接';
+    sourceLink.addEventListener("click", (event) => event.stopPropagation());
+
+    content.append(head, definitionList, sourceLink);
+    return content;
+  }
+
+  function makeDetailRow(row) {
+    const detailRow = document.createElement("tr");
+    detailRow.className = "detail-row";
+    detailRow.id = `detail-${row.id}`;
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 11;
+    detailCell.appendChild(buildDetailContent(row));
+    detailRow.appendChild(detailCell);
+    return detailRow;
+  }
+
   function renderRows(list) {
     const pageCount = Math.max(1, Math.ceil(list.length / pageState.pageSize));
     pageState.page = Math.min(pageState.page, pageCount);
@@ -661,50 +725,52 @@
       tr.appendChild(td);
       els.resultBody.replaceChildren(tr);
     } else {
-      els.resultBody.replaceChildren(
-        ...pageRows.map((row) => {
-          const tr = document.createElement("tr");
-          tr.tabIndex = 0;
-          tr.className = row.id === pageState.selectedId ? "selected" : "";
-          tr.addEventListener("click", () => showDetail(row));
-          tr.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") showDetail(row);
-          });
+      const tableRows = [];
+      pageRows.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.tabIndex = 0;
+        tr.className = row.id === pageState.selectedId ? "selected" : "";
+        tr.setAttribute("aria-expanded", String(row.id === pageState.selectedId));
+        tr.addEventListener("click", () => showDetail(row));
+        tr.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") showDetail(row);
+        });
 
-          const categoryCell = document.createElement("td");
-          categoryCell.appendChild(pill(row["分类"]));
-          const evidenceCell = document.createElement("td");
-          evidenceCell.className = "evidence-cell";
-          evidenceCell.appendChild(pill(row["证据等级"]));
-          const followCell = makeCell(row["是否建议跟进"], "follow-cell");
-          const linkCell = document.createElement("td");
-          const link = document.createElement("a");
-          link.className = "row-link";
-          link.href = row["原始链接"];
-          link.target = "_blank";
-          link.rel = "noreferrer";
-          link.title = "打开原始链接";
-          link.setAttribute("aria-label", "打开原始链接");
-          link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
-          link.addEventListener("click", (event) => event.stopPropagation());
-          linkCell.appendChild(link);
+        const categoryCell = document.createElement("td");
+        categoryCell.appendChild(pill(row["分类"]));
+        const evidenceCell = document.createElement("td");
+        evidenceCell.className = "evidence-cell";
+        evidenceCell.appendChild(pill(row["证据等级"]));
+        const followCell = makeCell(row["是否建议跟进"], "follow-cell");
+        const linkCell = document.createElement("td");
+        const link = document.createElement("a");
+        link.className = "row-link";
+        link.href = row["原始链接"];
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.title = "打开原始链接";
+        link.setAttribute("aria-label", "打开原始链接");
+        link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
+        link.addEventListener("click", (event) => event.stopPropagation());
+        linkCell.appendChild(link);
 
-          tr.append(
-            makeCell(row["研究/论文发布时间"], "date-cell"),
-            categoryCell,
-            makeCell(row["TA"], "ta-cell"),
-            makeCell(row["产品"], "product-cell"),
-            makeCell(row["产品/竞品"], "competitor-cell"),
-            makeCell(row["来源"], "source-cell"),
-            makeCell(row["标题/事件"], "title-cell"),
-            makeCell(row["核心内容摘要"], "summary-cell"),
-            evidenceCell,
-            followCell,
-            linkCell,
-          );
-          return tr;
-        }),
-      );
+        tr.append(
+          makeCell(row["研究/论文发布时间"], "date-cell"),
+          categoryCell,
+          makeCell(row["TA"], "ta-cell"),
+          makeCell(row["产品"], "product-cell"),
+          makeCell(row["产品/竞品"], "competitor-cell"),
+          makeCell(row["来源"], "source-cell"),
+          makeCell(row["标题/事件"], "title-cell"),
+          makeCell(row["核心内容摘要"], "summary-cell"),
+          evidenceCell,
+          followCell,
+          linkCell,
+        );
+        tableRows.push(tr);
+        if (row.id === pageState.selectedId) tableRows.push(makeDetailRow(row));
+      });
+      els.resultBody.replaceChildren(...tableRows);
     }
 
     els.resultCount.textContent = `${list.length.toLocaleString("zh-CN")} 条`;
@@ -728,40 +794,14 @@
 
   function showDetail(row) {
     pageState.selectedId = row.id;
-    els.detailPanel.hidden = false;
-    els.detailCategory.textContent = row["分类"];
-    els.detailCategory.className = tagClass(row["分类"]);
-    els.detailTitle.textContent = row["标题/事件"];
-    els.detailLink.href = row["原始链接"] || "#";
-
-    const fields = [
-      ["产品", row["产品"]],
-      ["TA", row["TA"]],
-      ["产品/竞品", row["产品/竞品"]],
-      ["活性成分/分子式追踪口径", row["活性成分/分子式追踪口径"]],
-      ["研究/论文发布时间", row["研究/论文发布时间"]],
-      ["来源", row["来源"]],
-      ["核心内容摘要", row["核心内容摘要"]],
-      ["影响判断", row["影响判断"]],
-      ["证据等级", row["证据等级"]],
-      ["是否建议跟进", row["是否建议跟进"]],
-    ];
-    els.detailFields.replaceChildren(
-      ...fields.flatMap(([label, value]) => {
-        const dt = document.createElement("dt");
-        dt.textContent = label;
-        const dd = document.createElement("dd");
-        dd.textContent = value || "-";
-        return [dt, dd];
-      }),
-    );
     renderRows(filteredRows);
-    els.detailPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    requestAnimationFrame(() => {
+      document.getElementById(`detail-${row.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
   }
 
   function clearDetail(shouldRender) {
     pageState.selectedId = null;
-    els.detailPanel.hidden = true;
     if (shouldRender) renderRows(filteredRows);
   }
 

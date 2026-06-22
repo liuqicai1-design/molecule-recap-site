@@ -819,6 +819,17 @@ tbody tr.selected td {
   background: #f4faf8;
 }
 
+tbody tr.selected td {
+  border-bottom-color: #d2e1dd;
+}
+
+.detail-row td,
+.detail-row:hover td {
+  padding: 0;
+  background: #fbfcfb;
+  border-bottom: 1px solid var(--line);
+}
+
 .date-cell,
 .ta-cell,
 .source-cell,
@@ -898,13 +909,9 @@ tbody tr.selected td {
   border-top: 1px solid var(--line);
 }
 
-.detail-panel {
-  border-bottom: 1px solid var(--line);
-  background: #fbfcfb;
-}
-
 .detail-content {
-  padding: 18px;
+  padding: 18px 20px 20px;
+  box-shadow: inset 4px 0 0 rgba(23, 107, 99, 0.62);
 }
 
 .detail-head {
