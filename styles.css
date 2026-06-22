@@ -789,7 +789,7 @@ input[type="date"] {
 
 table {
   width: 100%;
-  min-width: 1380px;
+  min-width: 1550px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -817,22 +817,22 @@ tbody tr:not(.detail-row) td:nth-child(4) {
 
 thead th:nth-child(5),
 tbody tr:not(.detail-row) td:nth-child(5) {
-  width: 280px;
+  width: 210px;
 }
 
 thead th:nth-child(6),
 tbody tr:not(.detail-row) td:nth-child(6) {
-  width: 108px;
+  width: 96px;
 }
 
 thead th:nth-child(7),
 tbody tr:not(.detail-row) td:nth-child(7) {
-  width: 360px;
+  width: 280px;
 }
 
 thead th:nth-child(8),
 tbody tr:not(.detail-row) td:nth-child(8) {
-  width: auto;
+  width: 520px;
 }
 
 thead th:nth-child(9),
@@ -909,18 +909,18 @@ tbody tr.selected td {
 }
 
 .competitor-cell {
-  min-width: 230px;
-  max-width: 300px;
+  min-width: 180px;
+  max-width: 240px;
 }
 
 .title-cell {
-  min-width: 290px;
-  max-width: 390px;
+  min-width: 230px;
+  max-width: 310px;
 }
 
 .summary-cell {
-  min-width: 330px;
-  max-width: 470px;
+  min-width: 480px;
+  max-width: 680px;
 }
 
 .pill {
