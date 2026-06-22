@@ -793,6 +793,10 @@
   }
 
   function showDetail(row) {
+    if (pageState.selectedId === row.id) {
+      clearDetail(true);
+      return;
+    }
     pageState.selectedId = row.id;
     renderRows(filteredRows);
     requestAnimationFrame(() => {
