@@ -1,6 +1,7 @@
 (function () {
   const dataset = window.RECAP_DATA || { meta: {}, rows: [] };
   const rows = dataset.rows || [];
+  const competitorCatalog = dataset.competitorCatalog || [];
   const meta = dataset.meta || {};
   const TA_ORDER = ["CVM", "CVU", "CPC", "EMG"];
   const PRODUCT_ORDER = ["立普妥", "络活喜", "可多华", "西乐葆", "乐瑞卡", "左洛复", "怡诺思", "迪敏思", "利加隆", "爱宁达"];
@@ -9,6 +10,7 @@
     "追踪对象",
     "直接竞品",
     "同类竞品",
+    "间接竞品",
     "NSAID 竞品",
     "非 NSAID 竞品",
     "复方/机制竞品",
@@ -19,6 +21,10 @@
     "局部竞品",
     "口服竞品",
     "系统治疗竞品",
+    "口服JAK抑制剂",
+    "外用JAK抑制剂",
+    "外用非激素抗炎竞品",
+    "生物制剂",
     "生物制剂竞品",
     "重症/潜在竞品",
     "特殊人群竞品",
@@ -142,7 +148,7 @@
   }
 
   function allProducts() {
-    return Array.from(new Set(rows.flatMap(productList))).sort(compareProduct);
+    return Array.from(new Set([...rows.flatMap(productList), ...competitorCatalog.map((item) => item["产品"]).filter(Boolean)])).sort(compareProduct);
   }
 
   function countBy(list, key) {
@@ -204,12 +210,24 @@
 
   function competitorEntries(product) {
     const seen = new Set();
+    const seenNames = new Set();
     const entries = [];
+    competitorCatalog.forEach((item) => {
+      if (item["产品"] !== product) return;
+      const relation = item["关系"] || "追踪对象";
+      const name = item["竞品"] || item["活性成分中文"] || item["活性成分英文"];
+      const raw = `${product}；${relation}；${name}`;
+      if (!name || seen.has(raw)) return;
+      seen.add(raw);
+      seenNames.add(name);
+      entries.push({ relation, name, raw });
+    });
     rows.forEach((row) => {
       if (!productList(row).includes(product)) return;
       const parsed = parseCompetitor(row["产品/竞品"], product);
-      if (!parsed || seen.has(parsed.raw)) return;
+      if (!parsed || seen.has(parsed.raw) || seenNames.has(parsed.name)) return;
       seen.add(parsed.raw);
+      seenNames.add(parsed.name);
       entries.push(parsed);
     });
     return entries.sort((a, b) => `${a.relation}${a.name}`.localeCompare(`${b.relation}${b.name}`, "zh-Hans-CN"));
