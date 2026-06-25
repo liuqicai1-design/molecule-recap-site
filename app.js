@@ -151,6 +151,17 @@
     return values.map(displaySource).join(" / ");
   }
 
+  function normalizedDate(value) {
+    const match = String(value || "").match(/\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : "";
+  }
+
+  function dataDateRange() {
+    const dates = rows.map((row) => normalizedDate(row["研究/论文发布时间"])).filter(Boolean).sort();
+    if (dates.length) return { start: dates[0], end: dates[dates.length - 1] };
+    return meta.dateRange || { start: "", end: "" };
+  }
+
   function productList(row) {
     return String(row["产品"] || "")
       .split("；")
@@ -260,7 +271,7 @@
 
   function renderHomeStats() {
     const products = allProducts();
-    const range = meta.dateRange || {};
+    const range = dataDateRange();
     const competitorCount = new Set(rows.map((row) => row["产品/竞品"]).filter(Boolean)).size;
     const items = [
       ["总数据", rows.length, `${range.start || ""} 至 ${range.end || ""}`],
@@ -362,7 +373,7 @@
   }
 
   function renderFiltersOverview() {
-    const range = meta.dateRange || {};
+    const range = dataDateRange();
     const items = [
       ["关键词", "标题、分子、摘要、影响判断、链接均可检索", ["全文匹配"]],
       ["分类", "新发研究与医学报道两类", uniqueValues("分类")],
@@ -406,7 +417,7 @@
   }
 
   function buildFilters() {
-    const range = meta.dateRange || {};
+    const range = dataDateRange();
     els.metaLine.textContent = `${range.start || ""} 至 ${range.end || ""} | ${rows.length.toLocaleString("zh-CN")} 条数据`;
 
     ["全部", ...uniqueValues("分类")].forEach((category) => {
@@ -566,14 +577,15 @@
   }
 
   function rowMatches(row) {
+    const rowDate = normalizedDate(row["研究/论文发布时间"]);
     if (pageState.query && !String(row.searchText || "").includes(pageState.query)) return false;
     if (pageState.category !== "全部" && row["分类"] !== pageState.category) return false;
     if (pageState.ta !== "全部" && row["TA"] !== pageState.ta) return false;
     if (pageState.source !== "全部" && row["来源"] !== pageState.source) return false;
     if (pageState.evidence !== "全部" && row["证据等级"] !== pageState.evidence) return false;
     if (pageState.followOnly && row["是否建议跟进"] !== "是") return false;
-    if (pageState.start && row["研究/论文发布时间"] < pageState.start) return false;
-    if (pageState.end && row["研究/论文发布时间"] > pageState.end) return false;
+    if (pageState.start && rowDate && rowDate < pageState.start) return false;
+    if (pageState.end && rowDate && rowDate > pageState.end) return false;
     if (pageState.products.size) {
       const productSet = productList(row);
       if (!productSet.some((product) => pageState.products.has(product))) return false;
@@ -863,8 +875,8 @@
     pageState.evidence = "全部";
     pageState.products.clear();
     pageState.followOnly = false;
-    pageState.start = (meta.dateRange || {}).start || "";
-    pageState.end = (meta.dateRange || {}).end || "";
+    pageState.start = dataDateRange().start || "";
+    pageState.end = dataDateRange().end || "";
     pageState.sort = "date-desc";
     pageState.page = 1;
     els.queryInput.value = "";
