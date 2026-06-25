@@ -5,34 +5,19 @@
   const meta = dataset.meta || {};
   const TA_ORDER = ["CVM", "CVU", "CPC", "EMG"];
   const PRODUCT_ORDER = ["立普妥", "络活喜", "可多华", "西乐葆", "乐瑞卡", "左洛复", "怡诺思", "迪敏思", "利加隆", "爱宁达"];
-  const RELATION_ORDER = [
-    "本品/同成分",
-    "追踪对象",
+  const RELATION_ORDER = ["本品/同成分", "直接竞品", "机制竞品"];
+  const DIRECT_RELATIONS = new Set([
     "直接竞品",
     "同类竞品",
     "间接竞品",
     "NSAID 竞品",
     "非 NSAID 竞品",
-    "复方/机制竞品",
-    "机制/联合竞品",
-    "机制竞品",
-    "PCSK9 竞品",
-    "PCSK9 潜在竞品",
     "局部竞品",
     "口服竞品",
-    "系统治疗竞品",
-    "口服JAK抑制剂",
-    "外用JAK抑制剂",
     "外用非激素抗炎竞品",
-    "生物制剂",
-    "生物制剂竞品",
-    "重症/潜在竞品",
     "特殊人群竞品",
     "历史竞品",
-    "潜在竞品",
-    "潜在/新机制",
-    "潜在/相邻适应症",
-  ];
+  ]);
   const TA_LABEL = {
     立普妥: "CVM",
     络活喜: "CVU",
@@ -151,6 +136,13 @@
     return values.map(displaySource).join(" / ");
   }
 
+  function displayRelation(value) {
+    const relation = String(value || "").trim();
+    if (!relation || relation === "追踪对象" || relation === "本品/同成分") return "本品/同成分";
+    if (DIRECT_RELATIONS.has(relation)) return "直接竞品";
+    return "机制竞品";
+  }
+
   function normalizedDate(value) {
     const match = String(value || "").match(/\d{4}-\d{2}-\d{2}/);
     return match ? match[0] : "";
@@ -218,6 +210,30 @@
     return card;
   }
 
+  function competitorParts(label, fallbackProduct) {
+    const parts = String(label || "")
+      .split("；")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (parts.length >= 3) return { product: parts[0], relation: parts[1], name: parts.slice(2).join("；"), raw: label };
+    if (parts.length === 1) return { product: parts[0] || fallbackProduct, relation: "本品/同成分", name: parts[0] || fallbackProduct, raw: label };
+    if (parts.length === 2) return { product: parts[0] || fallbackProduct, relation: "追踪对象", name: parts[1], raw: label };
+    return { product: fallbackProduct || "", relation: "本品/同成分", name: fallbackProduct || "", raw: label };
+  }
+
+  function displayCompetitorPath(row) {
+    const fallbackProduct = productList(row)[0] || row["产品"] || "";
+    const parsed = competitorParts(row["产品/竞品"], fallbackProduct);
+    const product = parsed.product || fallbackProduct;
+    const relation = displayRelation(parsed.relation);
+    return parsed.name ? `${product}；${relation}；${parsed.name}` : `${product}；${relation}`;
+  }
+
+  function detailRelation(row) {
+    const fallbackProduct = productList(row)[0] || row["产品"] || "";
+    return competitorParts(row["产品/竞品"], fallbackProduct).relation || "本品/同成分";
+  }
+
   function parseCompetitor(label, product) {
     const parts = String(label || "")
       .split("；")
@@ -252,14 +268,20 @@
       seenNames.add(parsed.name);
       entries.push(parsed);
     });
-    return entries.sort((a, b) => `${a.relation}${a.name}`.localeCompare(`${b.relation}${b.name}`, "zh-Hans-CN"));
+    return entries.sort(
+      (a, b) =>
+        compareRelation(displayRelation(a.relation), displayRelation(b.relation)) ||
+        a.name.localeCompare(b.name, "zh-Hans-CN") ||
+        a.relation.localeCompare(b.relation, "zh-Hans-CN"),
+    );
   }
 
   function competitorGroups(product) {
     const groups = new Map();
     competitorEntries(product).forEach((entry) => {
-      if (!groups.has(entry.relation)) groups.set(entry.relation, []);
-      groups.get(entry.relation).push(entry.name);
+      const relation = displayRelation(entry.relation);
+      if (!groups.has(relation)) groups.set(relation, []);
+      groups.get(relation).push(entry.name);
     });
     return Array.from(groups.entries())
       .map(([relation, names]) => ({
@@ -272,11 +294,11 @@
   function renderHomeStats() {
     const products = allProducts();
     const range = dataDateRange();
-    const competitorCount = new Set(rows.map((row) => row["产品/竞品"]).filter(Boolean)).size;
+    const competitorCount = new Set(rows.map(displayCompetitorPath).filter(Boolean)).size;
     const items = [
       ["总数据", rows.length, `${range.start || ""} 至 ${range.end || ""}`],
       ["产品", products.length, "CVM / CVU / CPC / EMG"],
-      ["追踪口径", competitorCount, "本品、直接竞品、机制和潜在竞品"],
+      ["追踪口径", competitorCount, "本品/同成分、直接竞品、机制竞品"],
       ["信息来源", uniqueValues("来源").length, displaySourceList(uniqueValues("来源"))],
       ["建议跟进", rows.filter((row) => row["是否建议跟进"] === "是").length, "优先阅读与判断影响"],
       ["高证据", rows.filter((row) => row["证据等级"] === "高").length, "临床研究或关键证据更新"],
@@ -578,7 +600,8 @@
 
   function rowMatches(row) {
     const rowDate = normalizedDate(row["研究/论文发布时间"]);
-    if (pageState.query && !String(row.searchText || "").includes(pageState.query)) return false;
+    const displayText = `${row.searchText || ""} ${displayCompetitorPath(row)} ${detailRelation(row)}`.toLowerCase();
+    if (pageState.query && !displayText.includes(pageState.query)) return false;
     if (pageState.category !== "全部" && row["分类"] !== pageState.category) return false;
     if (pageState.ta !== "全部" && row["TA"] !== pageState.ta) return false;
     if (pageState.source !== "全部" && row["来源"] !== pageState.source) return false;
@@ -723,7 +746,8 @@
     const fields = [
       ["产品", row["产品"]],
       ["TA", row["TA"]],
-      ["产品/竞品", row["产品/竞品"]],
+      ["产品/竞品", displayCompetitorPath(row)],
+      ["细分口径", detailRelation(row)],
       ["活性成分/分子式追踪口径", row["活性成分/分子式追踪口径"]],
       ["研究/论文发布时间", row["研究/论文发布时间"]],
       ["来源", displaySource(row["来源"])],
@@ -817,7 +841,7 @@
           categoryCell,
           makeCell(row["TA"], "ta-cell"),
           makeCell(row["产品"], "product-cell"),
-          makeCell(row["产品/竞品"], "competitor-cell"),
+          makeCell(displayCompetitorPath(row), "competitor-cell"),
           makeCell(displaySource(row["来源"]), "source-cell"),
           makeCell(row["标题/事件"], "title-cell"),
           makeCell(row["核心内容摘要"], "summary-cell"),
