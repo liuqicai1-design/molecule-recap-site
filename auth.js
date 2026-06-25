@@ -2,7 +2,7 @@
   const AUTH_KEY = "molecule_recap_auth_via_2026";
   const USERNAME = "via2026";
   const PASSWORD_HASH = "1e893c9c6c3a28480b9be248e95af8cdfc54d25a6232bd8d413be58f049385d3";
-  const SCRIPT_VERSION = "20260625-competitors";
+  const SCRIPT_VERSION = "20260625-source-label";
 
   const form = document.getElementById("loginForm");
   const userInput = document.getElementById("loginUser");

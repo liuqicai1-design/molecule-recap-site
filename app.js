@@ -45,6 +45,9 @@
     利加隆: "EMG",
     爱宁达: "EMG",
   };
+  const SOURCE_LABEL = {
+    "ClinicalTrials.gov": "Clinical",
+  };
   const pageState = {
     query: "",
     category: "全部",
@@ -138,6 +141,14 @@
     if (key === "TA") return values.sort(compareTa);
     if (key === "产品") return values.sort(compareProduct);
     return values.sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+  }
+
+  function displaySource(value) {
+    return SOURCE_LABEL[value] || value || "";
+  }
+
+  function displaySourceList(values) {
+    return values.map(displaySource).join(" / ");
   }
 
   function productList(row) {
@@ -252,10 +263,10 @@
     const range = meta.dateRange || {};
     const competitorCount = new Set(rows.map((row) => row["产品/竞品"]).filter(Boolean)).size;
     const items = [
-      ["总更新", rows.length, `${range.start || ""} 至 ${range.end || ""}`],
+      ["总数据", rows.length, `${range.start || ""} 至 ${range.end || ""}`],
       ["产品", products.length, "CVM / CVU / CPC / EMG"],
       ["追踪口径", competitorCount, "本品、直接竞品、机制和潜在竞品"],
-      ["信息来源", uniqueValues("来源").length, uniqueValues("来源").join(" / ")],
+      ["信息来源", uniqueValues("来源").length, displaySourceList(uniqueValues("来源"))],
       ["建议跟进", rows.filter((row) => row["是否建议跟进"] === "是").length, "优先阅读与判断影响"],
       ["高证据", rows.filter((row) => row["证据等级"] === "高").length, "临床研究或关键证据更新"],
     ];
@@ -289,7 +300,7 @@
       .forEach((ta) => {
         const products = Array.from(taMap[ta]).sort(compareProduct);
         const rowCount = rows.filter((row) => row["TA"] === ta).length;
-        grid.appendChild(overviewCard(ta, `${products.length} 个产品，${rowCount.toLocaleString("zh-CN")} 条更新`, products));
+        grid.appendChild(overviewCard(ta, `${products.length} 个产品，${rowCount.toLocaleString("zh-CN")} 条数据`, products));
       });
     els.overviewPanel.replaceChildren(grid);
   }
@@ -308,7 +319,7 @@
       heading.textContent = product;
       const body = document.createElement("p");
       const productRows = rows.filter((row) => productList(row).includes(product));
-      body.textContent = `${groups.length} 类，${entryCount} 个竞品/分子追踪口径，${productRows.length.toLocaleString("zh-CN")} 条更新`;
+      body.textContent = `${groups.length} 类，${entryCount} 个竞品/分子追踪口径，${productRows.length.toLocaleString("zh-CN")} 条数据`;
       head.append(heading, body);
       const groupWrap = document.createElement("div");
       groupWrap.className = "competitor-groups";
@@ -345,7 +356,7 @@
         const categoryCounts = countBy(sourceRows, "分类");
         const tags = Object.keys(categoryCounts).map((key) => `${key} ${categoryCounts[key]}`);
         tags.push(`高证据 ${sourceRows.filter((row) => row["证据等级"] === "高").length}`);
-        grid.appendChild(overviewCard(source, `${bySource[source].toLocaleString("zh-CN")} 条记录`, tags));
+        grid.appendChild(overviewCard(displaySource(source), `${bySource[source].toLocaleString("zh-CN")} 条记录`, tags));
       });
     els.overviewPanel.replaceChildren(grid);
   }
@@ -357,7 +368,7 @@
       ["分类", "新发研究与医学报道两类", uniqueValues("分类")],
       ["TA", "按业务治疗领域快速收敛", uniqueValues("TA")],
       ["产品", "支持多个产品组合筛选", allProducts()],
-      ["来源", "按信息来源定位证据入口", uniqueValues("来源")],
+      ["来源", "按信息来源定位证据入口", uniqueValues("来源").map(displaySource)],
       ["证据等级", "按高、中、低过滤阅读优先级", ["高", "中", "低"]],
       ["时间", `${range.start || ""} 至 ${range.end || ""}`, ["可调整起止日期"]],
       ["建议跟进", "只查看需要优先处理的更新", ["是", "视情况"]],
@@ -396,7 +407,7 @@
 
   function buildFilters() {
     const range = meta.dateRange || {};
-    els.metaLine.textContent = `${range.start || ""} 至 ${range.end || ""} | ${rows.length.toLocaleString("zh-CN")} 条更新`;
+    els.metaLine.textContent = `${range.start || ""} 至 ${range.end || ""} | ${rows.length.toLocaleString("zh-CN")} 条数据`;
 
     ["全部", ...uniqueValues("分类")].forEach((category) => {
       els.categoryFilter.appendChild(
@@ -426,7 +437,7 @@
     });
 
     addOption(els.sourceFilter, "全部", "全部");
-    uniqueValues("来源").forEach((value) => addOption(els.sourceFilter, value, value));
+    uniqueValues("来源").forEach((value) => addOption(els.sourceFilter, value, displaySource(value)));
 
     addOption(els.evidenceFilter, "全部", "全部");
     ["高", "中", "低"].forEach((value) => {
@@ -703,7 +714,7 @@
       ["产品/竞品", row["产品/竞品"]],
       ["活性成分/分子式追踪口径", row["活性成分/分子式追踪口径"]],
       ["研究/论文发布时间", row["研究/论文发布时间"]],
-      ["来源", row["来源"]],
+      ["来源", displaySource(row["来源"])],
       ["核心内容摘要", row["核心内容摘要"]],
       ["影响判断", row["影响判断"]],
       ["证据等级", row["证据等级"]],
@@ -795,7 +806,7 @@
           makeCell(row["TA"], "ta-cell"),
           makeCell(row["产品"], "product-cell"),
           makeCell(row["产品/竞品"], "competitor-cell"),
-          makeCell(row["来源"], "source-cell"),
+          makeCell(displaySource(row["来源"]), "source-cell"),
           makeCell(row["标题/事件"], "title-cell"),
           makeCell(row["核心内容摘要"], "summary-cell"),
           evidenceCell,
@@ -820,7 +831,7 @@
     if (pageState.query) bits.push("关键词");
     if (pageState.category !== "全部") bits.push(pageState.category);
     if (pageState.ta !== "全部") bits.push(pageState.ta);
-    if (pageState.source !== "全部") bits.push(pageState.source);
+    if (pageState.source !== "全部") bits.push(displaySource(pageState.source));
     if (pageState.evidence !== "全部") bits.push(`${pageState.evidence}证据`);
     if (pageState.products.size) bits.push(`${pageState.products.size} 个产品`);
     if (pageState.followOnly) bits.push("建议跟进");

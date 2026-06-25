@@ -863,7 +863,7 @@ input[type="date"] {
 
 table {
   width: 100%;
-  min-width: 1550px;
+  min-width: 1780px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -896,17 +896,17 @@ tbody tr:not(.detail-row) td:nth-child(5) {
 
 thead th:nth-child(6),
 tbody tr:not(.detail-row) td:nth-child(6) {
-  width: 96px;
+  width: 136px;
 }
 
 thead th:nth-child(7),
 tbody tr:not(.detail-row) td:nth-child(7) {
-  width: 280px;
+  width: 320px;
 }
 
 thead th:nth-child(8),
 tbody tr:not(.detail-row) td:nth-child(8) {
-  width: 520px;
+  width: 560px;
 }
 
 thead th:nth-child(9),
@@ -968,10 +968,16 @@ tbody tr.selected td {
 
 .date-cell,
 .ta-cell,
-.source-cell,
 .evidence-cell,
 .follow-cell {
   white-space: nowrap;
+}
+
+.source-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.28;
 }
 
 .category-cell {
