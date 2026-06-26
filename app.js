@@ -246,26 +246,50 @@
     return { relation, name, raw: label };
   }
 
+  function competitorAliasKey(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[（）()]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function competitorAliases(name) {
+    const aliases = String(name || "")
+      .split(/[\/／]/)
+      .map(competitorAliasKey)
+      .filter(Boolean);
+    return aliases.length ? aliases : [competitorAliasKey(name)].filter(Boolean);
+  }
+
+  function hasSeenAlias(seenAliases, name) {
+    return competitorAliases(name).some((alias) => seenAliases.has(alias));
+  }
+
+  function rememberAliases(seenAliases, name) {
+    competitorAliases(name).forEach((alias) => seenAliases.add(alias));
+  }
+
   function competitorEntries(product) {
     const seen = new Set();
-    const seenNames = new Set();
+    const seenAliases = new Set();
     const entries = [];
     competitorCatalog.forEach((item) => {
       if (item["产品"] !== product) return;
       const relation = item["关系"] || "追踪对象";
       const name = item["竞品"] || item["活性成分中文"] || item["活性成分英文"];
       const raw = `${product}；${relation}；${name}`;
-      if (!name || seen.has(raw)) return;
+      if (!name || seen.has(raw) || hasSeenAlias(seenAliases, name)) return;
       seen.add(raw);
-      seenNames.add(name);
+      rememberAliases(seenAliases, name);
       entries.push({ relation, name, raw });
     });
     rows.forEach((row) => {
       if (!productList(row).includes(product)) return;
       const parsed = parseCompetitor(row["产品/竞品"], product);
-      if (!parsed || seen.has(parsed.raw) || seenNames.has(parsed.name)) return;
+      if (!parsed || seen.has(parsed.raw) || hasSeenAlias(seenAliases, parsed.name)) return;
       seen.add(parsed.raw);
-      seenNames.add(parsed.name);
+      rememberAliases(seenAliases, parsed.name);
       entries.push(parsed);
     });
     return entries.sort(
