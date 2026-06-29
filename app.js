@@ -681,19 +681,27 @@
   function linkAnswerReferences(text) {
     const content = String(text || "");
     const parts = [];
-    const refPattern = /\[ref:?\s*(\d+)\]|\[ref\]\s*(\d+)\s*\[\/ref\]/gi;
+    const refPattern = /\[ref:?\s*([\d,\s]+)\]|\[ref\]\s*(\d+)\s*\[\/ref\]/gi;
     let lastIndex = 0;
     let match;
     while ((match = refPattern.exec(content))) {
       if (match.index > lastIndex) {
         parts.push(document.createTextNode(content.slice(lastIndex, match.index)));
       }
-      const refNumber = match[1] || match[2];
-      const link = document.createElement("a");
-      link.className = "qa-ref-anchor";
-      link.href = `#qa-ref-${refNumber}`;
-      link.textContent = `[ref${refNumber}]`;
-      parts.push(link);
+      const refNumbers = String(match[1] || match[2] || "")
+        .split(/[,\s]+/)
+        .map((ref) => ref.trim())
+        .filter(Boolean);
+      parts.push(document.createTextNode("["));
+      refNumbers.forEach((refNumber, index) => {
+        if (index > 0) parts.push(document.createTextNode(", "));
+        const link = document.createElement("a");
+        link.className = "qa-ref-anchor";
+        link.href = `#qa-ref-${refNumber}`;
+        link.textContent = `ref${refNumber}`;
+        parts.push(link);
+      });
+      parts.push(document.createTextNode("]"));
       lastIndex = refPattern.lastIndex;
     }
     if (lastIndex < content.length) {
@@ -712,7 +720,7 @@
     heading.textContent = "参考记录";
     const list = document.createElement("div");
     list.className = "qa-reference-list";
-    contexts.slice(0, 5).forEach((item) => {
+    contexts.slice(0, 12).forEach((item) => {
       const sourceUrl = validHttpUrl(item.link);
       const card = document.createElement(sourceUrl ? "a" : "article");
       card.id = `qa-ref-${item.ref}`;
