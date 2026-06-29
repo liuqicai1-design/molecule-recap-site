@@ -681,17 +681,18 @@
   function linkAnswerReferences(text) {
     const content = String(text || "");
     const parts = [];
-    const refPattern = /\[ref:?\s*(\d+)\]/gi;
+    const refPattern = /\[ref:?\s*(\d+)\]|\[ref\]\s*(\d+)\s*\[\/ref\]/gi;
     let lastIndex = 0;
     let match;
     while ((match = refPattern.exec(content))) {
       if (match.index > lastIndex) {
         parts.push(document.createTextNode(content.slice(lastIndex, match.index)));
       }
+      const refNumber = match[1] || match[2];
       const link = document.createElement("a");
       link.className = "qa-ref-anchor";
-      link.href = `#qa-ref-${match[1]}`;
-      link.textContent = match[0];
+      link.href = `#qa-ref-${refNumber}`;
+      link.textContent = `[ref${refNumber}]`;
       parts.push(link);
       lastIndex = refPattern.lastIndex;
     }
