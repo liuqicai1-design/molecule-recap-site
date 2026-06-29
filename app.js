@@ -666,7 +666,39 @@
   function renderQuestionAnswer(text, tone) {
     els.qaAnswer.hidden = false;
     els.qaAnswer.className = `qa-answer${tone ? ` ${tone}` : ""}`;
-    els.qaAnswer.textContent = text;
+    els.qaAnswer.replaceChildren(...linkAnswerReferences(text));
+  }
+
+  function validHttpUrl(url) {
+    try {
+      const parsed = new URL(String(url || "").trim());
+      return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function linkAnswerReferences(text) {
+    const content = String(text || "");
+    const parts = [];
+    const refPattern = /\[ref:?\s*(\d+)\]/gi;
+    let lastIndex = 0;
+    let match;
+    while ((match = refPattern.exec(content))) {
+      if (match.index > lastIndex) {
+        parts.push(document.createTextNode(content.slice(lastIndex, match.index)));
+      }
+      const link = document.createElement("a");
+      link.className = "qa-ref-anchor";
+      link.href = `#qa-ref-${match[1]}`;
+      link.textContent = match[0];
+      parts.push(link);
+      lastIndex = refPattern.lastIndex;
+    }
+    if (lastIndex < content.length) {
+      parts.push(document.createTextNode(content.slice(lastIndex)));
+    }
+    return parts.length ? parts : [document.createTextNode(content)];
   }
 
   function renderQuestionReferences(contexts) {
@@ -680,14 +712,29 @@
     const list = document.createElement("div");
     list.className = "qa-reference-list";
     contexts.slice(0, 5).forEach((item) => {
-      const card = document.createElement("article");
+      const sourceUrl = validHttpUrl(item.link);
+      const card = document.createElement(sourceUrl ? "a" : "article");
+      card.id = `qa-ref-${item.ref}`;
+      card.className = sourceUrl ? "qa-reference-card linked" : "qa-reference-card";
+      if (sourceUrl) {
+        card.href = sourceUrl;
+        card.target = "_blank";
+        card.rel = "noreferrer";
+        card.title = "打开原始链接";
+      }
       const title = document.createElement("strong");
       title.textContent = `${item.ref}. ${item.product} | ${item.source} | ${item.evidence}证据`;
       const body = document.createElement("p");
       body.textContent = item.title;
       const metaLine = document.createElement("span");
       metaLine.textContent = `${item.date} · ${item.competitor}`;
-      card.append(title, body, metaLine);
+      if (sourceUrl) {
+        const action = document.createElement("em");
+        action.textContent = "打开原文";
+        card.append(title, body, metaLine, action);
+      } else {
+        card.append(title, body, metaLine);
+      }
       list.appendChild(card);
     });
     els.qaReferences.hidden = false;
