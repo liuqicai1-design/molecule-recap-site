@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>产品分子式研究进展查询</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23196d68'/%3E%3Cpath d='M10 22 22 10M12 9h10v10M9 12a7 7 0 0 0 11 8' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="./styles.css?v=20260625-table-wrap" />
+    <link rel="stylesheet" href="./styles.css?v=20260629-qa" />
   </head>
   <body class="view-home auth-locked">
     <section class="login-screen" id="loginScreen" aria-label="登录">
@@ -62,6 +62,33 @@
               开始查询
             </button>
           </div>
+
+          <section class="qa-card" aria-label="产品问答">
+            <div class="qa-card-head">
+              <div>
+                <p class="eyebrow">Data Q&A</p>
+                <h2>产品问答</h2>
+              </div>
+              <span id="qaStatus">待提问</span>
+            </div>
+            <form class="qa-form" id="qaForm">
+              <textarea id="qaInput" rows="3" maxlength="500" placeholder="例如：爱宁达最近有哪些中文文献值得跟进？"></textarea>
+              <div class="qa-form-actions">
+                <button class="action-button primary" id="qaSubmit" type="submit">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7Z" /></svg>
+                  提问
+                </button>
+                <button class="action-button" id="qaClear" type="button">清空</button>
+              </div>
+            </form>
+            <div class="qa-examples" aria-label="示例问题">
+              <button type="button" data-question="利加隆有哪些万方中文文献需要优先跟进？">利加隆中文文献</button>
+              <button type="button" data-question="爱宁达和竞品最近有哪些高证据更新？">爱宁达高证据</button>
+              <button type="button" data-question="立普妥的 PCSK9 竞品有什么研究进展？">立普妥 PCSK9</button>
+            </div>
+            <div class="qa-answer" id="qaAnswer" hidden></div>
+            <div class="qa-references" id="qaReferences" hidden></div>
+          </section>
         </div>
         <section class="hero-stats" id="homeStats" aria-label="数据总览"></section>
       </div>
@@ -244,6 +271,6 @@
     <div class="floating-table-scrollbar" id="floatingTableScrollBar" aria-label="悬浮表格横向滚动条">
       <div id="floatingTableScrollSpacer"></div>
     </div>
-    <script src="./auth.js?v=20260625-relation-groups"></script>
+    <script src="./auth.js?v=20260629-qa"></script>
   </body>
 </html>

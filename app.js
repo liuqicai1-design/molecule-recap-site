@@ -87,6 +87,13 @@
     tableScrollSpacer: document.getElementById("tableScrollSpacer"),
     floatingTableScrollBar: document.getElementById("floatingTableScrollBar"),
     floatingTableScrollSpacer: document.getElementById("floatingTableScrollSpacer"),
+    qaForm: document.getElementById("qaForm"),
+    qaInput: document.getElementById("qaInput"),
+    qaSubmit: document.getElementById("qaSubmit"),
+    qaClear: document.getElementById("qaClear"),
+    qaStatus: document.getElementById("qaStatus"),
+    qaAnswer: document.getElementById("qaAnswer"),
+    qaReferences: document.getElementById("qaReferences"),
   };
 
   let filteredRows = rows.slice();
@@ -570,7 +577,175 @@
     els.resetButton.addEventListener("click", resetFilters);
     els.exportButton.addEventListener("click", exportCsv);
     els.toggleFilters.addEventListener("click", toggleFilters);
+    els.qaForm?.addEventListener("submit", submitQuestion);
+    els.qaClear?.addEventListener("click", clearQuestion);
+    document.querySelectorAll("[data-question]").forEach((button) => {
+      button.addEventListener("click", () => {
+        els.qaInput.value = button.dataset.question || "";
+        submitQuestion();
+      });
+    });
     wireTableScroll();
+  }
+
+  function questionTokens(question) {
+    const normalized = String(question || "").toLowerCase();
+    const alpha = normalized.match(/[a-z0-9][a-z0-9\-_/]{1,}/g) || [];
+    const chinese = normalized.match(/[\u4e00-\u9fff]{2,}/g) || [];
+    const grams = chinese.flatMap((segment) => {
+      const out = [segment];
+      for (let index = 0; index < segment.length - 1; index += 1) {
+        out.push(segment.slice(index, index + 2));
+      }
+      return out;
+    });
+    const productHits = PRODUCT_ORDER.filter((product) => normalized.includes(product));
+    return Array.from(new Set([...alpha, ...grams, ...productHits])).filter((token) => token.length >= 2);
+  }
+
+  function qaScore(row, tokens, question) {
+    const text = `${row.searchText || ""} ${displayCompetitorPath(row)} ${detailRelation(row)}`.toLowerCase();
+    let score = 0;
+    tokens.forEach((token) => {
+      if (!text.includes(token)) return;
+      score += token.length >= 4 ? 5 : 3;
+      if (String(row["标题/事件"] || "").toLowerCase().includes(token)) score += 3;
+      if (String(row["产品"] || "").toLowerCase().includes(token)) score += 5;
+      if (String(row["产品/竞品"] || "").toLowerCase().includes(token)) score += 4;
+    });
+    if (/万方|中文|国内/.test(question) && row["来源"] === "万方") score += 8;
+    if (/高证据|关键|优先/.test(question) && row["证据等级"] === "高") score += 6;
+    if (/跟进|关注|优先/.test(question) && row["是否建议跟进"] === "是") score += 5;
+    if (/医学报道|安全|不良反应|风险/.test(question) && row["分类"] === "医学报道") score += 5;
+    return score;
+  }
+
+  function compactContext(row, index) {
+    return {
+      ref: index + 1,
+      id: row.id,
+      date: row["研究/论文发布时间"],
+      category: row["分类"],
+      ta: row["TA"],
+      product: row["产品"],
+      competitor: displayCompetitorPath(row),
+      relation: detailRelation(row),
+      source: displaySource(row["来源"]),
+      title: row["标题/事件"],
+      summary: row["核心内容摘要"],
+      impact: row["影响判断"],
+      evidence: row["证据等级"],
+      follow: row["是否建议跟进"],
+      link: row["原始链接"],
+    };
+  }
+
+  function retrieveQuestionContext(question) {
+    const tokens = questionTokens(question);
+    const scored = rows
+      .map((row) => ({ row, score: qaScore(row, tokens, question) }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) => {
+        const evidenceRank = { 高: 3, 中: 2, 低: 1 };
+        return (
+          b.score - a.score ||
+          (evidenceRank[b.row["证据等级"]] || 0) - (evidenceRank[a.row["证据等级"]] || 0) ||
+          b.row["研究/论文发布时间"].localeCompare(a.row["研究/论文发布时间"])
+        );
+      })
+      .slice(0, 12);
+    return scored.map((item, index) => compactContext(item.row, index));
+  }
+
+  function setQuestionBusy(isBusy) {
+    if (els.qaSubmit) els.qaSubmit.disabled = isBusy;
+    if (els.qaInput) els.qaInput.disabled = isBusy;
+    if (isBusy && els.qaStatus) els.qaStatus.textContent = "检索中";
+  }
+
+  function renderQuestionAnswer(text, tone) {
+    els.qaAnswer.hidden = false;
+    els.qaAnswer.className = `qa-answer${tone ? ` ${tone}` : ""}`;
+    els.qaAnswer.textContent = text;
+  }
+
+  function renderQuestionReferences(contexts) {
+    if (!contexts.length) {
+      els.qaReferences.hidden = true;
+      els.qaReferences.replaceChildren();
+      return;
+    }
+    const heading = document.createElement("h3");
+    heading.textContent = "参考记录";
+    const list = document.createElement("div");
+    list.className = "qa-reference-list";
+    contexts.slice(0, 5).forEach((item) => {
+      const card = document.createElement("article");
+      const title = document.createElement("strong");
+      title.textContent = `${item.ref}. ${item.product} | ${item.source} | ${item.evidence}证据`;
+      const body = document.createElement("p");
+      body.textContent = item.title;
+      const metaLine = document.createElement("span");
+      metaLine.textContent = `${item.date} · ${item.competitor}`;
+      card.append(title, body, metaLine);
+      list.appendChild(card);
+    });
+    els.qaReferences.hidden = false;
+    els.qaReferences.replaceChildren(heading, list);
+  }
+
+  async function submitQuestion(event) {
+    event?.preventDefault();
+    const question = els.qaInput?.value.trim() || "";
+    if (!question) {
+      renderQuestionAnswer("请输入一个问题。", "warn");
+      return;
+    }
+    const contexts = retrieveQuestionContext(question);
+    renderQuestionReferences(contexts);
+    if (!contexts.length) {
+      renderQuestionAnswer("当前数据中没有检索到足够相关的记录。", "warn");
+      return;
+    }
+    const endpoint = String(window.RECAP_QA_ENDPOINT || "").trim();
+    if (!endpoint) {
+      renderQuestionAnswer(`已从当前网站数据中检索到 ${contexts.length} 条相关记录。AI 问答后端还未配置，配置后即可生成总结答案。`, "warn");
+      return;
+    }
+    setQuestionBusy(true);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          contexts,
+          meta: {
+            rowCount: rows.length,
+            sourceCounts: meta.counts?.source || {},
+            dateRange: dataDateRange(),
+          },
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "问答服务暂时不可用");
+      renderQuestionAnswer(payload.answer || "没有生成答案。", "");
+      if (els.qaStatus) els.qaStatus.textContent = "已回答";
+    } catch (error) {
+      renderQuestionAnswer(error.message || "问答服务暂时不可用。", "warn");
+      if (els.qaStatus) els.qaStatus.textContent = "调用失败";
+    } finally {
+      setQuestionBusy(false);
+    }
+  }
+
+  function clearQuestion() {
+    els.qaInput.value = "";
+    els.qaAnswer.hidden = true;
+    els.qaReferences.hidden = true;
+    els.qaAnswer.textContent = "";
+    els.qaReferences.replaceChildren();
+    if (els.qaStatus) els.qaStatus.textContent = "待提问";
   }
 
   function toggleFilters() {
