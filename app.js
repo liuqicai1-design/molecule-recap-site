@@ -616,8 +616,18 @@
     return Array.from(new Set([...alpha, ...grams, ...productHits])).filter((token) => token.length >= 2);
   }
 
+  function qaText(row) {
+    return `${row.searchText || ""} ${displayCompetitorPath(row)} ${detailRelation(row)}`.toLowerCase();
+  }
+
+  function qaStrictTopicTokens(question) {
+    const common = new Set(["clinical", "pubmed", "study", "trial", "trials", "phase", "oral"]);
+    return (String(question || "").toLowerCase().match(/[a-z0-9][a-z0-9\-_/]{2,}/g) || [])
+      .filter((token) => !common.has(token));
+  }
+
   function qaScore(row, tokens, question) {
-    const text = `${row.searchText || ""} ${displayCompetitorPath(row)} ${detailRelation(row)}`.toLowerCase();
+    const text = qaText(row);
     let score = 0;
     tokens.forEach((token) => {
       if (!text.includes(token)) return;
@@ -630,7 +640,35 @@
     if (/高证据|关键|优先/.test(question) && row["证据等级"] === "高") score += 6;
     if (/跟进|关注|优先/.test(question) && row["是否建议跟进"] === "是") score += 5;
     if (/医学报道|安全|不良反应|风险/.test(question) && row["分类"] === "医学报道") score += 5;
+    if (/口服/.test(question) && /口服|oral|enlicitide|mk-0616/i.test(text)) score += 12;
     return score;
+  }
+
+  function qaEvidenceRank(row) {
+    return { 高: 3, 中: 2, 低: 1 }[row["证据等级"]] || 0;
+  }
+
+  function qaSort(a, b) {
+    return (
+      b.score - a.score ||
+      qaEvidenceRank(b.row) - qaEvidenceRank(a.row) ||
+      b.row["研究/论文发布时间"].localeCompare(a.row["研究/论文发布时间"])
+    );
+  }
+
+  function qaIsBroadQuestion(question) {
+    return /哪些|有哪些|有什么|汇总|总结|全景|多少|有没有|相关/.test(question);
+  }
+
+  function qaGroupKey(row) {
+    const parts = String(row["产品/竞品"] || "")
+      .split("；")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const product = parts[0] || row["产品"] || "";
+    const relation = parts[1] || detailRelation(row) || "";
+    const competitor = parts.slice(2).join("；") || displayCompetitorPath(row) || relation;
+    return `${product}|${relation}|${competitor}`.toLowerCase();
   }
 
   function compactContext(row, index) {
@@ -655,19 +693,35 @@
 
   function retrieveQuestionContext(question) {
     const tokens = questionTokens(question);
-    const scored = rows
+    const strictTokens = qaStrictTopicTokens(question);
+    const strictRows = strictTokens.length
+      ? rows.filter((row) => strictTokens.some((token) => qaText(row).includes(token)))
+      : [];
+    const candidateRows = strictRows.length ? strictRows : rows;
+    const scored = candidateRows
       .map((row) => ({ row, score: qaScore(row, tokens, question) }))
       .filter((item) => item.score > 0)
-      .sort((a, b) => {
-        const evidenceRank = { 高: 3, 中: 2, 低: 1 };
-        return (
-          b.score - a.score ||
-          (evidenceRank[b.row["证据等级"]] || 0) - (evidenceRank[a.row["证据等级"]] || 0) ||
-          b.row["研究/论文发布时间"].localeCompare(a.row["研究/论文发布时间"])
-        );
-      })
-      .slice(0, 20);
-    return scored.map((item, index) => compactContext(item.row, index));
+      .sort(qaSort);
+    if (!qaIsBroadQuestion(question)) {
+      return scored.slice(0, 20).map((item, index) => compactContext(item.row, index));
+    }
+    const grouped = new Map();
+    scored.slice(0, 160).forEach((item) => {
+      const key = qaGroupKey(item.row);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+    const groups = Array.from(grouped.values()).sort((a, b) => qaSort(a[0], b[0]));
+    const selected = [];
+    groups.forEach((group) => {
+      if (selected.length < 16) selected.push(group[0]);
+    });
+    groups.forEach((group) => {
+      for (let index = 1; index < Math.min(group.length, 3) && selected.length < 24; index += 1) {
+        selected.push(group[index]);
+      }
+    });
+    return selected.slice(0, 24).map((item, index) => compactContext(item.row, index));
   }
 
   function setQuestionBusy(isBusy, label) {
