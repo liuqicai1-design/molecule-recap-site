@@ -622,8 +622,11 @@
 
   function qaStrictTopicTokens(question) {
     const common = new Set(["clinical", "pubmed", "study", "trial", "trials", "phase", "oral"]);
-    return (String(question || "").toLowerCase().match(/[a-z0-9][a-z0-9\-_/]{2,}/g) || [])
+    const normalized = String(question || "").toLowerCase();
+    const latin = (normalized.match(/[a-z0-9][a-z0-9\-_/]{2,}/g) || [])
       .filter((token) => !common.has(token));
+    const productHits = PRODUCT_ORDER.filter((product) => normalized.includes(product));
+    return Array.from(new Set([...latin, ...productHits]));
   }
 
   function qaScore(row, tokens, question) {
@@ -704,6 +707,9 @@
       .sort(qaSort);
     if (!qaIsBroadQuestion(question)) {
       return scored.slice(0, 20).map((item, index) => compactContext(item.row, index));
+    }
+    if (strictRows.length) {
+      return scored.map((item, index) => compactContext(item.row, index));
     }
     const grouped = new Map();
     scored.slice(0, 160).forEach((item) => {
