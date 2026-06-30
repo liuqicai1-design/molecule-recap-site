@@ -792,11 +792,12 @@
         card.title = "打开原始链接";
       }
       const title = document.createElement("strong");
-      title.textContent = `${item.ref}. ${item.product} | ${item.source} | ${item.evidence}证据`;
+      const evidenceLabel = item.evidence === "资料" ? "资料" : `${item.evidence || "资料"}证据`;
+      title.textContent = `${item.ref}. ${item.product || "资料"} | ${item.source || "来源"} | ${evidenceLabel}`;
       const body = document.createElement("p");
       body.textContent = item.title;
       const metaLine = document.createElement("span");
-      metaLine.textContent = `${item.date} · ${item.competitor}`;
+      metaLine.textContent = [item.date, item.competitor].filter(Boolean).join(" · ");
       if (sourceUrl) {
         const action = document.createElement("em");
         action.textContent = "打开原文";
@@ -819,11 +820,11 @@
     }
     const contexts = retrieveQuestionContext(question);
     renderQuestionReferences(contexts);
-    if (!contexts.length) {
+    const endpoint = String(window.RECAP_QA_ENDPOINT || "").trim();
+    if (!contexts.length && !endpoint) {
       renderQuestionAnswer("当前数据中没有检索到足够相关的记录。", "warn");
       return;
     }
-    const endpoint = String(window.RECAP_QA_ENDPOINT || "").trim();
     if (!endpoint) {
       renderQuestionAnswer(`已从当前网站数据中检索到 ${contexts.length} 条相关记录。AI 问答后端还未配置，配置后即可生成总结答案。`, "warn");
       return;
@@ -849,9 +850,13 @@
         if (!response.ok) throw new Error("问答服务暂时不可用");
         let answer = "";
         renderQuestionAnswer("", "", { streaming: true });
+        let references = contexts;
         await readSseAnswer(response, (chunk) => {
           answer += chunk;
           renderQuestionAnswer(answer, "", { streaming: true });
+        }, (nextReferences) => {
+          references = nextReferences;
+          renderQuestionReferences(references);
         });
         renderQuestionAnswer(answer || "没有生成答案。", "", { markdown: true });
         if (els.qaStatus) els.qaStatus.textContent = "已回答";
@@ -859,6 +864,7 @@
       }
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "问答服务暂时不可用");
+      if (Array.isArray(payload.references)) renderQuestionReferences(payload.references);
       renderQuestionAnswer(payload.answer || "没有生成答案。", "", { markdown: true });
       if (els.qaStatus) els.qaStatus.textContent = "已回答";
     } catch (error) {
@@ -869,7 +875,7 @@
     }
   }
 
-  async function readSseAnswer(response, onDelta) {
+  async function readSseAnswer(response, onDelta, onReferences) {
     const reader = response.body?.getReader?.();
     if (!reader) throw new Error("当前浏览器不支持流式读取");
     const decoder = new TextDecoder();
@@ -892,6 +898,7 @@
           continue;
         }
         if (payload.type === "error") throw new Error(payload.error || "问答服务调用失败");
+        if (payload.type === "references" && Array.isArray(payload.references)) onReferences?.(payload.references);
         if (payload.type === "delta" && payload.text) onDelta(payload.text);
       }
     }
