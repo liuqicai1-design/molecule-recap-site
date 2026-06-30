@@ -57,9 +57,14 @@
     overviewPanel: document.getElementById("overviewPanel"),
     overviewSection: document.getElementById("overview"),
     jumpQuery: document.getElementById("jumpQuery"),
+    jumpQa: document.getElementById("jumpQa"),
     navQuery: document.getElementById("navQuery"),
+    navQa: document.getElementById("navQa"),
     backHome: document.getElementById("backHome"),
+    backHomeFromQa: document.getElementById("backHomeFromQa"),
+    qaToQuery: document.getElementById("qaToQuery"),
     querySection: document.getElementById("query"),
+    qaSection: document.getElementById("qaPage"),
     filtersPanel: document.getElementById("filtersPanel"),
     toggleFilters: document.getElementById("toggleFilters"),
     statsGrid: document.getElementById("statsGrid"),
@@ -457,14 +462,18 @@
 
   function setPage(view, shouldFocusQuery) {
     const isQuery = view === "query";
-    document.body.classList.toggle("view-home", !isQuery);
+    const isQa = view === "qa";
+    document.body.classList.toggle("view-home", !isQuery && !isQa);
     document.body.classList.toggle("view-query", isQuery);
+    document.body.classList.toggle("view-qa", isQa);
     if (!isQuery) els.floatingTableScrollBar.classList.remove("visible");
     window.scrollTo({ top: 0, behavior: "smooth" });
     requestAnimationFrame(() => {
       updateTableScrollbar();
-      if (shouldFocusQuery) {
+      if (shouldFocusQuery && isQuery) {
         setTimeout(() => els.queryInput.focus(), 220);
+      } else if (isQa) {
+        setTimeout(() => els.qaInput?.focus(), 220);
       }
     });
   }
@@ -520,7 +529,11 @@
     });
     els.jumpQuery.addEventListener("click", () => setPage("query", true));
     els.navQuery.addEventListener("click", () => setPage("query", true));
+    els.jumpQa?.addEventListener("click", () => setPage("qa", false));
+    els.navQa?.addEventListener("click", () => setPage("qa", false));
     els.backHome.addEventListener("click", () => setPage("home", false));
+    els.backHomeFromQa?.addEventListener("click", () => setPage("home", false));
+    els.qaToQuery?.addEventListener("click", () => setPage("query", true));
     els.queryInput.addEventListener("input", () => {
       pageState.query = els.queryInput.value.trim().toLowerCase();
       pageState.page = 1;
