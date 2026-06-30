@@ -762,17 +762,14 @@
   function linkAnswerReferences(text) {
     const content = String(text || "");
     const parts = [];
-    const refPattern = /\[ref:?\s*([\d,\s]+)\]|\[ref\]\s*(\d+)\s*\[\/ref\]|\[ref\]\s*(\d+)/gi;
+    const refPattern = /\[(?=[^\]]*ref)(?:ref[:：]?\s*)?\d+(?:\s*[,，、]\s*(?:ref[:：]?\s*)?\d+)*\]|\[ref\]\s*\d+\s*\[\/ref\]|\[ref\]\s*\d+/gi;
     let lastIndex = 0;
     let match;
     while ((match = refPattern.exec(content))) {
       if (match.index > lastIndex) {
         parts.push(document.createTextNode(content.slice(lastIndex, match.index)));
       }
-      const refNumbers = String(match[1] || match[2] || match[3] || "")
-        .split(/[,\s]+/)
-        .map((ref) => ref.trim())
-        .filter(Boolean);
+      const refNumbers = match[0].match(/\d+/g) || [];
       parts.push(document.createTextNode("["));
       refNumbers.forEach((refNumber, index) => {
         if (index > 0) parts.push(document.createTextNode(", "));
