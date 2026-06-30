@@ -666,20 +666,27 @@
           b.row["研究/论文发布时间"].localeCompare(a.row["研究/论文发布时间"])
         );
       })
-      .slice(0, 12);
+      .slice(0, 20);
     return scored.map((item, index) => compactContext(item.row, index));
   }
 
-  function setQuestionBusy(isBusy) {
+  function setQuestionBusy(isBusy, label) {
     if (els.qaSubmit) els.qaSubmit.disabled = isBusy;
     if (els.qaInput) els.qaInput.disabled = isBusy;
-    if (isBusy && els.qaStatus) els.qaStatus.textContent = "检索中";
+    if (isBusy && els.qaStatus) els.qaStatus.textContent = label || "检索中";
   }
 
-  function renderQuestionAnswer(text, tone) {
+  function renderQuestionAnswer(text, tone, options = {}) {
     els.qaAnswer.hidden = false;
     els.qaAnswer.className = `qa-answer${tone ? ` ${tone}` : ""}`;
-    els.qaAnswer.replaceChildren(...linkAnswerReferences(text));
+    const nodes = options.markdown ? renderAnswerMarkdown(text) : linkAnswerReferences(text);
+    els.qaAnswer.replaceChildren(...nodes);
+    if (options.streaming) {
+      const cursor = document.createElement("span");
+      cursor.className = "qa-stream-cursor";
+      cursor.textContent = " ";
+      els.qaAnswer.appendChild(cursor);
+    }
   }
 
   function validHttpUrl(url) {
@@ -723,6 +730,46 @@
     return parts.length ? parts : [document.createTextNode(content)];
   }
 
+  function renderAnswerMarkdown(text) {
+    const lines = String(text || "").split(/\r?\n/);
+    const nodes = [];
+    let list = null;
+    const closeList = () => {
+      if (!list) return;
+      nodes.push(list);
+      list = null;
+    };
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        closeList();
+        return;
+      }
+      const heading = trimmed.match(/^#{1,4}\s+(.+)$/);
+      if (heading) {
+        closeList();
+        const title = document.createElement("h4");
+        title.append(...linkAnswerReferences(heading[1]));
+        nodes.push(title);
+        return;
+      }
+      const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+      if (bullet) {
+        if (!list) list = document.createElement("ul");
+        const item = document.createElement("li");
+        item.append(...linkAnswerReferences(bullet[1]));
+        list.appendChild(item);
+        return;
+      }
+      closeList();
+      const paragraph = document.createElement("p");
+      paragraph.append(...linkAnswerReferences(trimmed));
+      nodes.push(paragraph);
+    });
+    closeList();
+    return nodes.length ? nodes : [document.createTextNode(String(text || ""))];
+  }
+
   function renderQuestionReferences(contexts) {
     if (!contexts.length) {
       els.qaReferences.hidden = true;
@@ -733,7 +780,7 @@
     heading.textContent = "参考记录";
     const list = document.createElement("div");
     list.className = "qa-reference-list";
-    contexts.slice(0, 12).forEach((item) => {
+    contexts.slice(0, 20).forEach((item) => {
       const sourceUrl = validHttpUrl(item.link);
       const card = document.createElement(sourceUrl ? "a" : "article");
       card.id = `qa-ref-${item.ref}`;
@@ -781,14 +828,15 @@
       renderQuestionAnswer(`已从当前网站数据中检索到 ${contexts.length} 条相关记录。AI 问答后端还未配置，配置后即可生成总结答案。`, "warn");
       return;
     }
-    setQuestionBusy(true);
+    setQuestionBusy(true, "生成中");
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream, application/json" },
         body: JSON.stringify({
           question,
           contexts,
+          stream: true,
           meta: {
             rowCount: rows.length,
             sourceCounts: meta.counts?.source || {},
@@ -796,15 +844,56 @@
           },
         }),
       });
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("text/event-stream")) {
+        if (!response.ok) throw new Error("问答服务暂时不可用");
+        let answer = "";
+        renderQuestionAnswer("", "", { streaming: true });
+        await readSseAnswer(response, (chunk) => {
+          answer += chunk;
+          renderQuestionAnswer(answer, "", { streaming: true });
+        });
+        renderQuestionAnswer(answer || "没有生成答案。", "", { markdown: true });
+        if (els.qaStatus) els.qaStatus.textContent = "已回答";
+        return;
+      }
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "问答服务暂时不可用");
-      renderQuestionAnswer(payload.answer || "没有生成答案。", "");
+      renderQuestionAnswer(payload.answer || "没有生成答案。", "", { markdown: true });
       if (els.qaStatus) els.qaStatus.textContent = "已回答";
     } catch (error) {
       renderQuestionAnswer(error.message || "问答服务暂时不可用。", "warn");
       if (els.qaStatus) els.qaStatus.textContent = "调用失败";
     } finally {
       setQuestionBusy(false);
+    }
+  }
+
+  async function readSseAnswer(response, onDelta) {
+    const reader = response.body?.getReader?.();
+    if (!reader) throw new Error("当前浏览器不支持流式读取");
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const data = trimmed.slice(5).trim();
+        if (!data || data === "[DONE]") continue;
+        let payload;
+        try {
+          payload = JSON.parse(data);
+        } catch {
+          continue;
+        }
+        if (payload.type === "error") throw new Error(payload.error || "问答服务调用失败");
+        if (payload.type === "delta" && payload.text) onDelta(payload.text);
+      }
     }
   }
 
