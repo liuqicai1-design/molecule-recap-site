@@ -483,6 +483,13 @@ h1 {
   background: #f3f8f7;
 }
 
+.qa-reference-card:target,
+.qa-reference-card.ref-focused {
+  border-color: var(--teal);
+  background: #eef9f6;
+  box-shadow: 0 0 0 3px rgba(15, 118, 109, 0.14);
+}
+
 .qa-reference-list strong,
 .qa-reference-list span,
 .qa-reference-list em {

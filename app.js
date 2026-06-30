@@ -592,6 +592,7 @@
     els.toggleFilters.addEventListener("click", toggleFilters);
     els.qaForm?.addEventListener("submit", submitQuestion);
     els.qaClear?.addEventListener("click", clearQuestion);
+    els.qaAnswer?.addEventListener("click", handleQaReferenceClick);
     document.querySelectorAll("[data-question]").forEach((button) => {
       button.addEventListener("click", () => {
         els.qaInput.value = button.dataset.question || "";
@@ -837,10 +838,10 @@
       return;
     }
     const heading = document.createElement("h3");
-    heading.textContent = "参考记录";
+    heading.textContent = `参考记录（共 ${contexts.length} 条）`;
     const list = document.createElement("div");
     list.className = "qa-reference-list";
-    contexts.slice(0, 20).forEach((item) => {
+    contexts.forEach((item) => {
       const sourceUrl = validHttpUrl(item.link);
       const card = document.createElement(sourceUrl ? "a" : "article");
       card.id = `qa-ref-${item.ref}`;
@@ -869,6 +870,20 @@
     });
     els.qaReferences.hidden = false;
     els.qaReferences.replaceChildren(heading, list);
+  }
+
+  function handleQaReferenceClick(event) {
+    const link = event.target.closest(".qa-ref-anchor");
+    if (!link) return;
+    const targetId = String(link.getAttribute("href") || "").replace(/^#/, "");
+    if (!targetId) return;
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    event.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("ref-focused");
+    window.history.replaceState(null, "", `#${targetId}`);
+    window.setTimeout(() => target.classList.remove("ref-focused"), 1800);
   }
 
   async function submitQuestion(event) {
