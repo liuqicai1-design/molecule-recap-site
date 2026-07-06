@@ -6,6 +6,9 @@
   const kolDataset = window.KOL_DATA || { meta: {}, rows: [] };
   const kolRows = kolDataset.rows || [];
   const kolMeta = kolDataset.meta || {};
+  const monthlyReportDataset = window.MONTHLY_REPORT_DATA || { meta: {}, reports: [] };
+  const monthlyReports = monthlyReportDataset.reports || [];
+  const monthlyReportMeta = monthlyReportDataset.meta || {};
   const TA_ORDER = ["CVM", "CVU", "CPC", "EMG"];
   const PRODUCT_ORDER = ["立普妥", "络活喜", "可多华", "西乐葆", "乐瑞卡", "左洛复", "怡诺思", "迪敏思", "利加隆", "爱宁达"];
   const RELATION_ORDER = ["本品/同成分", "直接竞品", "机制竞品"];
@@ -67,6 +70,9 @@
     pageSize: 24,
     selectedId: null,
   };
+  const reportState = {
+    selectedProduct: monthlyReports[0]?.product || "",
+  };
 
   const els = {
     metaLine: document.getElementById("metaLine"),
@@ -77,10 +83,13 @@
     jumpQa: document.getElementById("jumpQa"),
     navQuery: document.getElementById("navQuery"),
     navKol: document.getElementById("navKol"),
+    navReports: document.getElementById("navReports"),
     navQa: document.getElementById("navQa"),
     jumpKol: document.getElementById("jumpKol"),
+    jumpReports: document.getElementById("jumpReports"),
     backHome: document.getElementById("backHome"),
     backHomeFromKol: document.getElementById("backHomeFromKol"),
+    backHomeFromReports: document.getElementById("backHomeFromReports"),
     backHomeFromQa: document.getElementById("backHomeFromQa"),
     kolToProduct: document.getElementById("kolToProduct"),
     qaToQuery: document.getElementById("qaToQuery"),
@@ -139,6 +148,12 @@
     kolNextPage: document.getElementById("kolNextPage"),
     kolPageInfo: document.getElementById("kolPageInfo"),
     exportKolButton: document.getElementById("exportKolButton"),
+    reportsSection: document.getElementById("reportsPage"),
+    reportProductList: document.getElementById("reportProductList"),
+    reportReader: document.getElementById("reportReader"),
+    reportMonthLabel: document.getElementById("reportMonthLabel"),
+    reportRangeLabel: document.getElementById("reportRangeLabel"),
+    reportDownloadLink: document.getElementById("reportDownloadLink"),
   };
 
   let filteredRows = rows.slice();
@@ -427,6 +442,7 @@
       ["专家", kolCount, `${institutionCount.toLocaleString("zh-CN")} 家机构/医院`],
       ["产品", products.length, "CVM / CVU / CPC / EMG"],
       ["追踪口径", competitorCount, "本品/同成分、直接竞品、机制竞品"],
+      ["当月报告", monthlyReports.length, monthlyReportMeta.period?.label || "本月产品关注"],
       ["问答证据", rows.length + kolRows.length, "产品数据 + NKOL 明细"],
     ];
     els.homeStats.replaceChildren(
@@ -553,10 +569,12 @@
   function setPage(view, shouldFocusQuery) {
     const isQuery = view === "query";
     const isKol = view === "kol";
+    const isReports = view === "reports";
     const isQa = view === "qa";
-    document.body.classList.toggle("view-home", !isQuery && !isKol && !isQa);
+    document.body.classList.toggle("view-home", !isQuery && !isKol && !isReports && !isQa);
     document.body.classList.toggle("view-query", isQuery);
     document.body.classList.toggle("view-kol", isKol);
+    document.body.classList.toggle("view-reports", isReports);
     document.body.classList.toggle("view-qa", isQa);
     if (!isQuery) els.floatingTableScrollBar.classList.remove("visible");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -640,12 +658,15 @@
     });
     els.jumpKol?.addEventListener("click", () => setPage("kol", false));
     els.navKol?.addEventListener("click", () => setPage("kol", false));
+    els.jumpReports?.addEventListener("click", () => setPage("reports", false));
+    els.navReports?.addEventListener("click", () => setPage("reports", false));
     els.jumpQuery.addEventListener("click", () => setPage("query", true));
     els.navQuery.addEventListener("click", () => setPage("query", true));
     els.jumpQa?.addEventListener("click", () => setPage("qa", false));
     els.navQa?.addEventListener("click", () => setPage("qa", false));
     els.backHome.addEventListener("click", () => setPage("home", false));
     els.backHomeFromKol?.addEventListener("click", () => setPage("home", false));
+    els.backHomeFromReports?.addEventListener("click", () => setPage("home", false));
     els.backHomeFromQa?.addEventListener("click", () => setPage("home", false));
     els.kolToProduct?.addEventListener("click", () => setPage("query", true));
     els.qaToQuery?.addEventListener("click", () => setPage("query", true));
@@ -1911,6 +1932,206 @@
     renderKolRows(filteredKolRows);
   }
 
+  function reportByProduct(product) {
+    return monthlyReports.find((report) => report.product === product) || monthlyReports[0] || null;
+  }
+
+  function reportMetric(label, value) {
+    const card = document.createElement("div");
+    card.className = "report-metric";
+    const valueNode = document.createElement("strong");
+    valueNode.textContent = Number(value || 0).toLocaleString("zh-CN");
+    const labelNode = document.createElement("span");
+    labelNode.textContent = label;
+    card.append(valueNode, labelNode);
+    return card;
+  }
+
+  function reportBlock(title, className) {
+    const section = document.createElement("section");
+    section.className = `report-block${className ? ` ${className}` : ""}`;
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    section.appendChild(heading);
+    return section;
+  }
+
+  function reportList(items) {
+    const list = document.createElement("ul");
+    list.className = "report-list";
+    (items || []).forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      list.appendChild(item);
+    });
+    return list;
+  }
+
+  function reportEvidenceCard(item, type) {
+    const card = document.createElement("article");
+    card.className = `report-evidence-card ${type || ""}`;
+    const top = document.createElement("div");
+    top.className = "report-evidence-top";
+    const meta = document.createElement("div");
+    meta.className = "report-evidence-meta";
+    [item.date, item.source, item.type, item.evidence, item.follow].filter(Boolean).forEach((value) => meta.appendChild(miniPill(value)));
+    const path = document.createElement("span");
+    path.className = "report-evidence-path";
+    path.textContent = item.path || [item.expert, item.institution].filter(Boolean).join(" / ") || item.productInfo || "";
+    top.append(meta, path);
+
+    const title = document.createElement("h4");
+    title.textContent = item.title || "未命名记录";
+    const summary = document.createElement("p");
+    summary.textContent = item.summary || item.impact || "";
+    card.append(top, title, summary);
+
+    if (item.productInfo) {
+      const productInfo = document.createElement("div");
+      productInfo.className = "report-inline-tags";
+      item.productInfo.split("；").filter(Boolean).forEach((tag) => productInfo.appendChild(miniPill(tag)));
+      card.appendChild(productInfo);
+    }
+    if (item.impact) {
+      const impact = document.createElement("p");
+      impact.className = "report-impact";
+      impact.textContent = item.impact;
+      card.appendChild(impact);
+    }
+    const url = validHttpUrl(item.link);
+    if (url) {
+      const link = document.createElement("a");
+      link.className = "report-card-link";
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = "打开原文";
+      card.appendChild(link);
+    }
+    return card;
+  }
+
+  function renderReportProductList() {
+    if (!els.reportProductList) return;
+    const range = monthlyReportMeta.period || {};
+    if (els.reportMonthLabel) els.reportMonthLabel.textContent = range.label || "当月产品报告";
+    if (els.reportRangeLabel) els.reportRangeLabel.textContent = [range.start, range.end].filter(Boolean).join(" 至 ");
+    els.reportProductList.replaceChildren(
+      ...monthlyReports.map((report) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `report-product-button${report.product === reportState.selectedProduct ? " active" : ""}`;
+        const name = document.createElement("strong");
+        name.textContent = report.product;
+        const metaLine = document.createElement("span");
+        metaLine.textContent = `${report.metrics.productUpdates} 条进展 / ${report.metrics.kolUpdates} 条KOL`;
+        button.append(name, metaLine);
+        button.addEventListener("click", () => {
+          reportState.selectedProduct = report.product;
+          renderReports();
+        });
+        return button;
+      }),
+    );
+  }
+
+  function renderReportReader() {
+    if (!els.reportReader) return;
+    const report = reportByProduct(reportState.selectedProduct);
+    if (!report) {
+      const empty = document.createElement("div");
+      empty.className = "report-reader-empty";
+      empty.textContent = "暂无当月产品报告";
+      els.reportReader.replaceChildren(empty);
+      return;
+    }
+    if (els.reportDownloadLink) {
+      els.reportDownloadLink.href = report.download || "#";
+      els.reportDownloadLink.setAttribute("download", `${report.period.label || "当月"}_${report.product}_关注报告.docx`);
+    }
+
+    const head = document.createElement("div");
+    head.className = "report-reader-head";
+    const titleWrap = document.createElement("div");
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = report.period.label || monthlyReportMeta.period?.label || "当月报告";
+    const title = document.createElement("h3");
+    title.textContent = `${report.product}关注报告`;
+    const subtitle = document.createElement("p");
+    subtitle.textContent = [report.period.start, report.period.end].filter(Boolean).join(" 至 ");
+    titleWrap.append(eyebrow, title, subtitle);
+    head.appendChild(titleWrap);
+
+    const metrics = document.createElement("div");
+    metrics.className = "report-metrics";
+    metrics.append(
+      reportMetric("产品/竞品进展", report.metrics.productUpdates),
+      reportMetric("建议跟进", report.metrics.follow),
+      reportMetric("高证据", report.metrics.highEvidence),
+      reportMetric("KOL记录", report.metrics.kolUpdates),
+      reportMetric("涉及专家", report.metrics.experts),
+      reportMetric("涉及机构", report.metrics.institutions),
+    );
+
+    const conclusion = reportBlock("本月结论", "conclusion");
+    conclusion.appendChild(reportList(report.conclusion));
+
+    const focus = reportBlock("重点关注事项", "focus");
+    const focusGrid = document.createElement("div");
+    focusGrid.className = "report-evidence-grid";
+    if (report.focusItems?.length) {
+      report.focusItems.forEach((item) => focusGrid.appendChild(reportEvidenceCard(item, "focus")));
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "report-empty";
+      empty.textContent = "本月未检索到产品/竞品研究进展。";
+      focusGrid.appendChild(empty);
+    }
+    focus.appendChild(focusGrid);
+
+    const kolBlock = reportBlock("KOL/专家动态", "kol");
+    const kolGrid = document.createElement("div");
+    kolGrid.className = "report-evidence-grid";
+    if (report.kolItems?.length) {
+      report.kolItems.forEach((item) => kolGrid.appendChild(reportEvidenceCard(item, "kol")));
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "report-empty";
+      empty.textContent = "本月未检索到KOL/专家相关记录。";
+      kolGrid.appendChild(empty);
+    }
+    kolBlock.appendChild(kolGrid);
+
+    const terms = reportBlock("涉及分子/靶点", "terms");
+    const termWrap = document.createElement("div");
+    termWrap.className = "report-term-list";
+    if (report.terms?.length) {
+      report.terms.forEach((term) => {
+        const chip = document.createElement("span");
+        chip.className = "report-term-chip";
+        chip.textContent = `${term.name} · ${term.count}`;
+        termWrap.appendChild(chip);
+      });
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "report-empty";
+      empty.textContent = "本月记录中未提取到明确的产品信息或分子/靶点。";
+      termWrap.appendChild(empty);
+    }
+    terms.appendChild(termWrap);
+
+    const follow = reportBlock("建议跟进", "follow");
+    follow.appendChild(reportList(report.followups));
+
+    els.reportReader.replaceChildren(head, metrics, conclusion, focus, kolBlock, terms, follow);
+  }
+
+  function renderReports() {
+    renderReportProductList();
+    renderReportReader();
+  }
+
   function render() {
     filteredRows = sortRows(rows.filter(rowMatches));
     if (pageState.selectedId && !filteredRows.some((row) => row.id === pageState.selectedId)) clearDetail(false);
@@ -1928,4 +2149,5 @@
   setOverview("products", false);
   render();
   renderKol();
+  renderReports();
 })();
