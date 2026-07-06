@@ -2,7 +2,7 @@
   const AUTH_KEY = "molecule_recap_auth_via_2026";
   const USERNAME = "via2026";
   const PASSWORD_HASH = "1e893c9c6c3a28480b9be248e95af8cdfc54d25a6232bd8d413be58f049385d3";
-  const SCRIPT_VERSION = "20260630-qa-cluster";
+  const SCRIPT_VERSION = "20260706-kol-hub";
 
   const form = document.getElementById("loginForm");
   const userInput = document.getElementById("loginUser");
@@ -40,6 +40,7 @@
     window.__RECAP_AUTH_BOOTED = true;
     await loadScript(`./qa-config.js?v=${SCRIPT_VERSION}`);
     await loadScript(`./data.js?v=${SCRIPT_VERSION}`);
+    await loadScript(`./kol-data.js?v=${SCRIPT_VERSION}`);
     await loadScript(`./app.js?v=${SCRIPT_VERSION}`);
     document.body.classList.remove("auth-locked");
     document.getElementById("logoutButton")?.addEventListener("click", () => {

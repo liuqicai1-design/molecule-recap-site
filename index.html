@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>产品分子式研究进展查询</title>
+    <title>产品与KOL情报查询</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23196d68'/%3E%3Cpath d='M10 22 22 10M12 9h10v10M9 12a7 7 0 0 0 11 8' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="./styles.css?v=20260630-qa-cluster" />
+    <link rel="stylesheet" href="./styles.css?v=20260706-kol-hub" />
   </head>
   <body class="view-home auth-locked">
     <section class="login-screen" id="loginScreen" aria-label="登录">
@@ -18,7 +18,7 @@
         </div>
         <div>
           <p class="eyebrow">Monthly Recap Intelligence</p>
-          <h1>产品分子式研究进展</h1>
+          <h1>产品与KOL情报检索</h1>
         </div>
         <div class="login-fields">
           <label for="loginUser">账号</label>
@@ -41,13 +41,14 @@
             </svg>
           </div>
           <div>
-            <strong>产品分子式研究进展</strong>
+            <strong>产品与KOL情报检索</strong>
             <span id="metaLine">正在载入数据</span>
           </div>
         </div>
         <div class="nav-actions">
-          <button class="nav-link" id="navQuery" type="button">查询工作台</button>
-          <button class="nav-link" id="navQa" type="button">产品问答</button>
+          <button class="nav-link" id="navKol" type="button">KOL信息查询</button>
+          <button class="nav-link" id="navQuery" type="button">产品信息查询</button>
+          <button class="nav-link" id="navQa" type="button">智能问答</button>
           <button class="nav-link" id="logoutButton" type="button">退出登录</button>
         </div>
       </nav>
@@ -55,16 +56,29 @@
       <div class="hero-layout">
         <div class="hero-copy">
           <p class="eyebrow">Monthly Recap Intelligence</p>
-          <h1>产品与竞品分子式研究进展查询</h1>
-          <p class="hero-lead">按产品、竞品分子、来源与证据等级追踪新发研究和医学报道。</p>
-          <div class="hero-actions" aria-label="首页入口">
-            <button class="action-button primary" id="jumpQuery" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
-              开始查询
+          <h1>产品、竞品与KOL情报查询</h1>
+          <p class="hero-lead">把产品分子、竞品动态、专家报道和论文线索放在同一个证据工作台里。</p>
+          <div class="home-entry-grid" aria-label="首页入口">
+            <button class="entry-card kol-entry" id="jumpKol" type="button">
+              <span class="entry-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="9.5" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></svg>
+              </span>
+              <strong>KOL信息查询</strong>
+              <span>专家、医院、微信报道与PubMed论文明细</span>
             </button>
-            <button class="action-button" id="jumpQa" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /><path d="M8 9h8" /><path d="M8 13h5" /></svg>
-              产品问答
+            <button class="entry-card product-entry" id="jumpQuery" type="button">
+              <span class="entry-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M10 2v7.3" /><path d="M14 2v7.3" /><path d="M8.5 9h7" /><path d="M7 22h10a4 4 0 0 0 3.4-6.1L15 9H9l-5.4 6.9A4 4 0 0 0 7 22Z" /></svg>
+              </span>
+              <strong>产品信息查询</strong>
+              <span>产品、竞品分子、来源、证据等级与跟进判断</span>
+            </button>
+            <button class="entry-card qa-entry" id="jumpQa" type="button">
+              <span class="entry-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /><path d="M8 9h8" /><path d="M8 13h5" /></svg>
+              </span>
+              <strong>智能问答</strong>
+              <span>基于当前数据和知识库提问，返回证据引用</span>
             </button>
           </div>
         </div>
@@ -76,8 +90,8 @@
       <div class="qa-page-layout">
         <div class="qa-page-copy">
           <p class="eyebrow">Data Q&A</p>
-          <h2>产品问答</h2>
-          <p>基于当前网站数据和 IMA「产品信息检索」知识库回答产品、竞品、来源和证据等级相关问题。</p>
+          <h2>智能问答</h2>
+          <p>基于当前网站数据和知识库回答产品、竞品、专家、来源和证据等级相关问题。</p>
           <div class="qa-page-actions">
             <button class="icon-button" id="backHomeFromQa" type="button" title="返回首页" aria-label="返回首页">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -88,7 +102,7 @@
             </button>
             <button class="icon-button primary" id="qaToQuery" type="button" title="打开查询工作台" aria-label="打开查询工作台">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
-              <span>查询工作台</span>
+              <span>产品信息查询</span>
             </button>
           </div>
         </div>
@@ -97,12 +111,12 @@
           <div class="qa-card-head">
             <div>
               <p class="eyebrow">Ask With Evidence</p>
-              <h3>问一个产品问题</h3>
+              <h3>问一个情报问题</h3>
             </div>
             <span id="qaStatus">待提问</span>
           </div>
           <form class="qa-form" id="qaForm">
-            <textarea id="qaInput" rows="5" maxlength="500" placeholder="例如：爱宁达最近有哪些中文文献值得跟进？"></textarea>
+            <textarea id="qaInput" rows="5" maxlength="500" placeholder="例如：张福仁教授最近有哪些相关报道或论文？"></textarea>
             <div class="qa-form-actions">
               <button class="action-button primary" id="qaSubmit" type="submit">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7Z" /></svg>
@@ -113,6 +127,7 @@
           </form>
           <div class="qa-examples" aria-label="示例问题">
             <button type="button" data-question="利加隆有哪些万方中文文献需要优先跟进？">利加隆中文文献</button>
+            <button type="button" data-question="张福仁教授有哪些相关报道或论文？">专家信息</button>
             <button type="button" data-question="爱宁达和竞品最近有哪些高证据更新？">爱宁达高证据</button>
             <button type="button" data-question="立普妥的 PCSK9 竞品有什么研究进展？">立普妥 PCSK9</button>
           </div>
@@ -130,6 +145,123 @@
         <button class="overview-tab" type="button" data-overview="filters">筛选条件</button>
       </div>
       <div class="overview-panel" id="overviewPanel"></div>
+    </section>
+
+    <section class="kol-section" id="kolPage" aria-label="KOL信息查询">
+      <div class="kol-shell">
+        <div class="query-heading kol-heading">
+          <div>
+            <p class="eyebrow">KOL Intelligence</p>
+            <h2>KOL信息查询</h2>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" id="backHomeFromKol" type="button" title="返回首页" aria-label="返回首页">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 12H5" />
+                <path d="m11 18-6-6 6-6" />
+              </svg>
+              <span>返回首页</span>
+            </button>
+            <button class="icon-button primary" id="kolToProduct" type="button" title="打开产品信息查询" aria-label="打开产品信息查询">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
+              <span>产品信息查询</span>
+            </button>
+            <button class="icon-button" id="exportKolButton" type="button" title="导出KOL结果" aria-label="导出KOL结果">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              <span>导出</span>
+            </button>
+          </div>
+        </div>
+
+        <section class="filters kol-filters" aria-label="KOL筛选">
+          <div class="filter-panel-head">
+            <div>
+              <h3>KOL筛选</h3>
+              <p>按专家、医院、产品、来源、类型、产品信息和时间定位报道或论文</p>
+            </div>
+          </div>
+          <div class="kol-filter-grid">
+            <div class="filter-group keyword-filter">
+              <label for="kolQueryInput">关键词</label>
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m16.5 16.5 4 4" />
+                </svg>
+                <input id="kolQueryInput" type="search" autocomplete="off" placeholder="专家、医院、标题、产品信息、PMID" />
+              </div>
+            </div>
+            <div class="filter-group">
+              <label for="kolProductFilter">产品</label>
+              <select id="kolProductFilter"></select>
+            </div>
+            <div class="filter-group">
+              <label for="kolTypeFilter">类型</label>
+              <select id="kolTypeFilter"></select>
+            </div>
+            <div class="filter-group">
+              <label for="kolInfoSourceFilter">信息来源</label>
+              <select id="kolInfoSourceFilter"></select>
+            </div>
+            <div class="filter-group">
+              <label for="kolSourceFilter">来源名称</label>
+              <select id="kolSourceFilter"></select>
+            </div>
+            <div class="filter-group">
+              <label for="kolDateStart">开始</label>
+              <input id="kolDateStart" type="date" />
+            </div>
+            <div class="filter-group">
+              <label for="kolDateEnd">结束</label>
+              <input id="kolDateEnd" type="date" />
+            </div>
+            <label class="toggle-line" for="kolProductInfoOnly">
+              <input id="kolProductInfoOnly" type="checkbox" />
+              <span>只看有产品信息</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="stats kol-stats" id="kolStatsGrid" aria-label="KOL统计概览"></section>
+
+        <section class="kol-results-panel">
+          <div class="results-toolbar">
+            <div>
+              <strong id="kolResultCount">0 条</strong>
+              <span id="kolActiveFilters"></span>
+            </div>
+            <div class="toolbar-controls">
+              <label for="kolPageSize">每页</label>
+              <select id="kolPageSize">
+                <option value="12">12</option>
+                <option value="24" selected>24</option>
+                <option value="48">48</option>
+              </select>
+              <label for="kolSortSelect">排序</label>
+              <select id="kolSortSelect">
+                <option value="date-desc">时间新到旧</option>
+                <option value="date-asc">时间旧到新</option>
+                <option value="kol">专家</option>
+                <option value="product">产品</option>
+              </select>
+            </div>
+          </div>
+          <div class="kol-result-list" id="kolResultBody"></div>
+          <div class="pager">
+            <button class="icon-only" id="kolPrevPage" type="button" title="上一页" aria-label="上一页">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <span id="kolPageInfo">1 / 1</span>
+            <button class="icon-only" id="kolNextPage" type="button" title="下一页" aria-label="下一页">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+          </div>
+        </section>
+      </div>
     </section>
 
     <section class="query-section" id="query">
@@ -167,7 +299,7 @@
       <section class="filters top-filters" id="filtersPanel" aria-label="筛选">
         <div class="filter-panel-head">
           <div>
-            <h3>筛选条件</h3>
+            <h3>产品筛选</h3>
             <p>按关键词、产品、来源、证据和时间快速缩小结果范围</p>
           </div>
           <button class="icon-button" id="toggleFilters" type="button" aria-expanded="true">
@@ -299,6 +431,6 @@
     <div class="floating-table-scrollbar" id="floatingTableScrollBar" aria-label="悬浮表格横向滚动条">
       <div id="floatingTableScrollSpacer"></div>
     </div>
-    <script src="./auth.js?v=20260630-qa-cluster"></script>
+    <script src="./auth.js?v=20260706-kol-hub"></script>
   </body>
 </html>

@@ -3,6 +3,9 @@
   const rows = dataset.rows || [];
   const competitorCatalog = dataset.competitorCatalog || [];
   const meta = dataset.meta || {};
+  const kolDataset = window.KOL_DATA || { meta: {}, rows: [] };
+  const kolRows = kolDataset.rows || [];
+  const kolMeta = kolDataset.meta || {};
   const TA_ORDER = ["CVM", "CVU", "CPC", "EMG"];
   const PRODUCT_ORDER = ["立普妥", "络活喜", "可多华", "西乐葆", "乐瑞卡", "左洛复", "怡诺思", "迪敏思", "利加隆", "爱宁达"];
   const RELATION_ORDER = ["本品/同成分", "直接竞品", "机制竞品"];
@@ -50,6 +53,20 @@
     overview: "products",
     filtersCollapsed: false,
   };
+  const kolState = {
+    query: "",
+    product: "全部",
+    type: "全部",
+    infoSource: "全部",
+    sourceName: "全部",
+    start: "",
+    end: "",
+    productInfoOnly: false,
+    sort: "date-desc",
+    page: 1,
+    pageSize: 24,
+    selectedId: null,
+  };
 
   const els = {
     metaLine: document.getElementById("metaLine"),
@@ -59,11 +76,16 @@
     jumpQuery: document.getElementById("jumpQuery"),
     jumpQa: document.getElementById("jumpQa"),
     navQuery: document.getElementById("navQuery"),
+    navKol: document.getElementById("navKol"),
     navQa: document.getElementById("navQa"),
+    jumpKol: document.getElementById("jumpKol"),
     backHome: document.getElementById("backHome"),
+    backHomeFromKol: document.getElementById("backHomeFromKol"),
     backHomeFromQa: document.getElementById("backHomeFromQa"),
+    kolToProduct: document.getElementById("kolToProduct"),
     qaToQuery: document.getElementById("qaToQuery"),
     querySection: document.getElementById("query"),
+    kolSection: document.getElementById("kolPage"),
     qaSection: document.getElementById("qaPage"),
     filtersPanel: document.getElementById("filtersPanel"),
     toggleFilters: document.getElementById("toggleFilters"),
@@ -99,9 +121,28 @@
     qaStatus: document.getElementById("qaStatus"),
     qaAnswer: document.getElementById("qaAnswer"),
     qaReferences: document.getElementById("qaReferences"),
+    kolQueryInput: document.getElementById("kolQueryInput"),
+    kolProductFilter: document.getElementById("kolProductFilter"),
+    kolTypeFilter: document.getElementById("kolTypeFilter"),
+    kolInfoSourceFilter: document.getElementById("kolInfoSourceFilter"),
+    kolSourceFilter: document.getElementById("kolSourceFilter"),
+    kolDateStart: document.getElementById("kolDateStart"),
+    kolDateEnd: document.getElementById("kolDateEnd"),
+    kolProductInfoOnly: document.getElementById("kolProductInfoOnly"),
+    kolStatsGrid: document.getElementById("kolStatsGrid"),
+    kolResultBody: document.getElementById("kolResultBody"),
+    kolResultCount: document.getElementById("kolResultCount"),
+    kolActiveFilters: document.getElementById("kolActiveFilters"),
+    kolSortSelect: document.getElementById("kolSortSelect"),
+    kolPageSize: document.getElementById("kolPageSize"),
+    kolPrevPage: document.getElementById("kolPrevPage"),
+    kolNextPage: document.getElementById("kolNextPage"),
+    kolPageInfo: document.getElementById("kolPageInfo"),
+    exportKolButton: document.getElementById("exportKolButton"),
   };
 
   let filteredRows = rows.slice();
+  let filteredKolRows = kolRows.slice();
   let isSyncingScroll = false;
 
   function orderIndex(list, value) {
@@ -140,6 +181,46 @@
     return values.sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
   }
 
+  function uniqueKolValues(key) {
+    return Array.from(new Set(kolRows.map((row) => row[key]).filter(Boolean))).sort((a, b) => {
+      if (key === "product") return compareProduct(a, b);
+      return String(a).localeCompare(String(b), "zh-Hans-CN");
+    });
+  }
+
+  function kolSearchText(row) {
+    if (!row._searchText) {
+      row._searchText = [
+        row.infoSource,
+        row.type,
+        row.ccmTa,
+        row.province,
+        row.city,
+        row.kolName,
+        row.institution,
+        row.department,
+        row.academicRole1,
+        row.academicRole2,
+        row.kolCategory,
+        row.management2026,
+        row.product,
+        row.relationTag,
+        row.managementType,
+        row.title,
+        row.sourceName,
+        row.date,
+        row.mainContent,
+        row.productInfo,
+        row.abstract,
+        row.pmid,
+        row.doi,
+        row.authors,
+        row.matchNote,
+      ].filter(Boolean).join(" ").toLowerCase();
+    }
+    return row._searchText;
+  }
+
   function displaySource(value) {
     return SOURCE_LABEL[value] || value || "";
   }
@@ -164,6 +245,12 @@
     const dates = rows.map((row) => normalizedDate(row["研究/论文发布时间"])).filter(Boolean).sort();
     if (dates.length) return { start: dates[0], end: dates[dates.length - 1] };
     return meta.dateRange || { start: "", end: "" };
+  }
+
+  function kolDateRange() {
+    const dates = kolRows.map((row) => normalizedDate(row.date)).filter(Boolean).sort();
+    if (dates.length) return { start: dates[0], end: dates[dates.length - 1] };
+    return kolMeta.dateRange || { start: "", end: "" };
   }
 
   function productList(row) {
@@ -330,14 +417,17 @@
   function renderHomeStats() {
     const products = allProducts();
     const range = dataDateRange();
+    const kRange = kolDateRange();
     const competitorCount = new Set(rows.map(displayCompetitorPath).filter(Boolean)).size;
+    const kolCount = new Set(kolRows.map((row) => row.kolName).filter(Boolean)).size;
+    const institutionCount = new Set(kolRows.map((row) => row.institution).filter(Boolean)).size;
     const items = [
-      ["总数据", rows.length, `${range.start || ""} 至 ${range.end || ""}`],
+      ["产品数据", rows.length, `${range.start || ""} 至 ${range.end || ""}`],
+      ["KOL记录", kolRows.length, `${kRange.start || ""} 至 ${kRange.end || ""}`],
+      ["专家", kolCount, `${institutionCount.toLocaleString("zh-CN")} 家机构/医院`],
       ["产品", products.length, "CVM / CVU / CPC / EMG"],
       ["追踪口径", competitorCount, "本品/同成分、直接竞品、机制竞品"],
-      ["信息来源", uniqueValues("来源").length, displaySourceList(uniqueValues("来源"))],
-      ["建议跟进", rows.filter((row) => row["是否建议跟进"] === "是").length, "优先阅读与判断影响"],
-      ["高证据", rows.filter((row) => row["证据等级"] === "高").length, "临床研究或关键证据更新"],
+      ["问答证据", rows.length + kolRows.length, "产品数据 + NKOL 明细"],
     ];
     els.homeStats.replaceChildren(
       ...items.map(([label, value, note]) => {
@@ -462,9 +552,11 @@
 
   function setPage(view, shouldFocusQuery) {
     const isQuery = view === "query";
+    const isKol = view === "kol";
     const isQa = view === "qa";
-    document.body.classList.toggle("view-home", !isQuery && !isQa);
+    document.body.classList.toggle("view-home", !isQuery && !isKol && !isQa);
     document.body.classList.toggle("view-query", isQuery);
+    document.body.classList.toggle("view-kol", isKol);
     document.body.classList.toggle("view-qa", isQa);
     if (!isQuery) els.floatingTableScrollBar.classList.remove("visible");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -472,6 +564,8 @@
       updateTableScrollbar();
       if (shouldFocusQuery && isQuery) {
         setTimeout(() => els.queryInput.focus(), 220);
+      } else if (isKol) {
+        setTimeout(() => els.kolQueryInput?.focus(), 220);
       } else if (isQa) {
         setTimeout(() => els.qaInput?.focus(), 220);
       }
@@ -523,16 +617,37 @@
     pageState.end = els.dateEnd.value;
   }
 
+  function buildKolFilters() {
+    if (!els.kolProductFilter) return;
+    const range = kolDateRange();
+    addOption(els.kolProductFilter, "全部", "全部");
+    uniqueKolValues("product").forEach((value) => addOption(els.kolProductFilter, value, value));
+    addOption(els.kolTypeFilter, "全部", "全部");
+    uniqueKolValues("type").forEach((value) => addOption(els.kolTypeFilter, value, value));
+    addOption(els.kolInfoSourceFilter, "全部", "全部");
+    uniqueKolValues("infoSource").forEach((value) => addOption(els.kolInfoSourceFilter, value, value));
+    addOption(els.kolSourceFilter, "全部", "全部");
+    uniqueKolValues("sourceName").forEach((value) => addOption(els.kolSourceFilter, value, value));
+    els.kolDateStart.value = range.start || "";
+    els.kolDateEnd.value = range.end || "";
+    kolState.start = els.kolDateStart.value;
+    kolState.end = els.kolDateEnd.value;
+  }
+
   function wireEvents() {
     document.querySelectorAll("[data-overview]").forEach((button) => {
       button.addEventListener("click", () => setOverview(button.dataset.overview, true));
     });
+    els.jumpKol?.addEventListener("click", () => setPage("kol", false));
+    els.navKol?.addEventListener("click", () => setPage("kol", false));
     els.jumpQuery.addEventListener("click", () => setPage("query", true));
     els.navQuery.addEventListener("click", () => setPage("query", true));
     els.jumpQa?.addEventListener("click", () => setPage("qa", false));
     els.navQa?.addEventListener("click", () => setPage("qa", false));
     els.backHome.addEventListener("click", () => setPage("home", false));
+    els.backHomeFromKol?.addEventListener("click", () => setPage("home", false));
     els.backHomeFromQa?.addEventListener("click", () => setPage("home", false));
+    els.kolToProduct?.addEventListener("click", () => setPage("query", true));
     els.qaToQuery?.addEventListener("click", () => setPage("query", true));
     els.queryInput.addEventListener("input", () => {
       pageState.query = els.queryInput.value.trim().toLowerCase();
@@ -590,6 +705,65 @@
     els.resetButton.addEventListener("click", resetFilters);
     els.exportButton.addEventListener("click", exportCsv);
     els.toggleFilters.addEventListener("click", toggleFilters);
+    els.kolQueryInput?.addEventListener("input", () => {
+      kolState.query = els.kolQueryInput.value.trim().toLowerCase();
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolProductFilter?.addEventListener("change", () => {
+      kolState.product = els.kolProductFilter.value;
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolTypeFilter?.addEventListener("change", () => {
+      kolState.type = els.kolTypeFilter.value;
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolInfoSourceFilter?.addEventListener("change", () => {
+      kolState.infoSource = els.kolInfoSourceFilter.value;
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolSourceFilter?.addEventListener("change", () => {
+      kolState.sourceName = els.kolSourceFilter.value;
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolDateStart?.addEventListener("change", () => {
+      kolState.start = els.kolDateStart.value;
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolDateEnd?.addEventListener("change", () => {
+      kolState.end = els.kolDateEnd.value;
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolProductInfoOnly?.addEventListener("change", () => {
+      kolState.productInfoOnly = els.kolProductInfoOnly.checked;
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolSortSelect?.addEventListener("change", () => {
+      kolState.sort = els.kolSortSelect.value;
+      renderKol();
+    });
+    els.kolPageSize?.addEventListener("change", () => {
+      kolState.pageSize = Number(els.kolPageSize.value);
+      kolState.page = 1;
+      renderKol();
+    });
+    els.kolPrevPage?.addEventListener("click", () => {
+      kolState.page = Math.max(1, kolState.page - 1);
+      renderKol();
+    });
+    els.kolNextPage?.addEventListener("click", () => {
+      const pageCount = Math.max(1, Math.ceil(filteredKolRows.length / kolState.pageSize));
+      kolState.page = Math.min(pageCount, kolState.page + 1);
+      renderKol();
+    });
+    els.exportKolButton?.addEventListener("click", exportKolCsv);
     els.qaForm?.addEventListener("submit", submitQuestion);
     els.qaClear?.addEventListener("click", clearQuestion);
     els.qaAnswer?.addEventListener("click", handleQaReferenceClick);
@@ -677,6 +851,7 @@
 
   function compactContext(row, index) {
     return {
+      contextType: "product",
       ref: index + 1,
       id: row.id,
       date: row["研究/论文发布时间"],
@@ -695,7 +870,38 @@
     };
   }
 
-  function retrieveQuestionContext(question) {
+  function compactKolContext(row, index) {
+    const expertLine = [row.kolName, row.institution, row.department].filter(Boolean).join(" · ");
+    const sourceLine = [row.infoSource, row.sourceName].filter(Boolean).join(" / ");
+    const summary = [row.mainContent, row.abstract].filter(Boolean).join("\n");
+    return {
+      contextType: "kol",
+      ref: index + 1,
+      id: `kol-${row.id}`,
+      date: row.date,
+      category: row.type,
+      ta: row.ccmTa,
+      product: row.product,
+      competitor: [expertLine, row.productInfo].filter(Boolean).join(" · "),
+      relation: row.managementType || row.kolCategory,
+      source: sourceLine || "NKOL",
+      title: row.title,
+      summary,
+      impact: [
+        row.kolName ? `专家：${row.kolName}` : "",
+        row.institution ? `机构：${row.institution}` : "",
+        row.productInfo ? `产品信息：${row.productInfo}` : "",
+        row.paperRole ? `论文身份：${row.paperRole}` : "",
+      ].filter(Boolean).join("；"),
+      evidence: row.type || "资料",
+      follow: row.management2026 || "",
+      link: row.link,
+      pmid: row.pmid,
+      doi: row.doi,
+    };
+  }
+
+  function retrieveProductQuestionContext(question) {
     const tokens = questionTokens(question);
     const strictTokens = qaStrictTopicTokens(question);
     const strictRows = strictTokens.length
@@ -729,6 +935,84 @@
       }
     });
     return selected.slice(0, 24).map((item, index) => compactContext(item.row, index));
+  }
+
+  function kolQaText(row) {
+    return kolSearchText(row);
+  }
+
+  function kolQaScore(row, tokens, question) {
+    const text = kolQaText(row);
+    let score = 0;
+    tokens.forEach((token) => {
+      if (!text.includes(token)) return;
+      score += token.length >= 4 ? 5 : 3;
+      if (String(row.title || "").toLowerCase().includes(token)) score += 4;
+      if (String(row.kolName || "").toLowerCase().includes(token)) score += 8;
+      if (String(row.institution || "").toLowerCase().includes(token)) score += 6;
+      if (String(row.product || "").toLowerCase().includes(token)) score += 5;
+      if (String(row.productInfo || "").toLowerCase().includes(token)) score += 5;
+    });
+    if (/专家|kol|医生|教授|主任|医院|机构|科室|学会|协会/.test(question)) score += 10;
+    if (/微信|公众号|报道|推文|文章/.test(question) && row.infoSource === "微信公众号") score += 8;
+    if (/论文|pubmed|pmid|doi|期刊|文献/.test(question) && row.infoSource === "PubMed") score += 8;
+    if (/会议|大会|论坛/.test(question) && row.type === "会议") score += 6;
+    if (/非会议|报道/.test(question) && row.type === "非会议") score += 4;
+    if (/产品信息|化学名|分子|靶点|pcsk9|jak|il-/.test(question) && row.productInfo) score += 5;
+    return score;
+  }
+
+  function kolQaSort(a, b) {
+    return b.score - a.score || String(b.row.date || "").localeCompare(String(a.row.date || "")) || String(a.row.kolName || "").localeCompare(String(b.row.kolName || ""), "zh-Hans-CN");
+  }
+
+  function retrieveKolQuestionContext(question) {
+    if (!kolRows.length) return [];
+    const tokens = questionTokens(question);
+    const strictTokens = qaStrictTopicTokens(question);
+    const strictRows = strictTokens.length
+      ? kolRows.filter((row) => strictTokens.some((token) => kolQaText(row).includes(token)))
+      : [];
+    const candidateRows = strictRows.length ? strictRows : kolRows;
+    const scored = candidateRows
+      .map((row) => ({ row, score: kolQaScore(row, tokens, question) }))
+      .filter((item) => item.score > 0)
+      .sort(kolQaSort);
+    if (!qaIsBroadQuestion(question) || strictRows.length) {
+      return scored.map((item, index) => compactKolContext(item.row, index));
+    }
+    const grouped = new Map();
+    scored.slice(0, 180).forEach((item) => {
+      const key = [item.row.kolName, item.row.institution, item.row.product, item.row.type].join("|").toLowerCase();
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+    const selected = [];
+    Array.from(grouped.values()).sort((a, b) => kolQaSort(a[0], b[0])).forEach((group) => {
+      if (selected.length < 36) selected.push(group[0]);
+    });
+    return selected.map((item, index) => compactKolContext(item.row, index));
+  }
+
+  function questionLooksKol(question) {
+    return /专家|kol|医生|教授|主任|医院|机构|科室|学会|协会|微信|公众号|报道|推文|论文|pmid|doi|文献/.test(question);
+  }
+
+  function retrieveQuestionContext(question) {
+    const productContexts = retrieveProductQuestionContext(question);
+    const kolContexts = retrieveKolQuestionContext(question);
+    const ordered = questionLooksKol(question)
+      ? [...kolContexts, ...productContexts]
+      : [...productContexts, ...kolContexts];
+    const seen = new Set();
+    return ordered
+      .filter((item) => {
+        const key = `${item.contextType}:${item.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item, index) => ({ ...item, ref: index + 1 }));
   }
 
   function setQuestionBusy(isBusy, label) {
@@ -850,7 +1134,9 @@
         card.title = "打开原始链接";
       }
       const title = document.createElement("strong");
-      const evidenceLabel = item.evidence === "资料" ? "资料" : `${item.evidence || "资料"}证据`;
+      const evidenceLabel = item.contextType === "kol"
+        ? `${item.evidence || "资料"} / KOL`
+        : item.evidence === "资料" ? "资料" : `${item.evidence || "资料"}证据`;
       title.textContent = `${item.ref}. ${item.product || "资料"} | ${item.source || "来源"} | ${evidenceLabel}`;
       const body = document.createElement("p");
       body.textContent = item.title;
@@ -1387,6 +1673,244 @@
     URL.revokeObjectURL(url);
   }
 
+  function kolMatches(row) {
+    const rowDate = normalizedDate(row.date);
+    if (kolState.query && !kolSearchText(row).includes(kolState.query)) return false;
+    if (kolState.product !== "全部" && row.product !== kolState.product) return false;
+    if (kolState.type !== "全部" && row.type !== kolState.type) return false;
+    if (kolState.infoSource !== "全部" && row.infoSource !== kolState.infoSource) return false;
+    if (kolState.sourceName !== "全部" && row.sourceName !== kolState.sourceName) return false;
+    if (kolState.productInfoOnly && !row.productInfo) return false;
+    if (kolState.start && rowDate && rowDate < kolState.start) return false;
+    if (kolState.end && rowDate && rowDate > kolState.end) return false;
+    return true;
+  }
+
+  function sortKolRows(list) {
+    const copy = list.slice();
+    copy.sort((a, b) => {
+      if (kolState.sort === "date-asc") return String(a.date || "").localeCompare(String(b.date || ""));
+      if (kolState.sort === "kol") {
+        return String(a.kolName || "").localeCompare(String(b.kolName || ""), "zh-Hans-CN") || String(b.date || "").localeCompare(String(a.date || ""));
+      }
+      if (kolState.sort === "product") {
+        return compareProduct(a.product || "", b.product || "") || String(b.date || "").localeCompare(String(a.date || ""));
+      }
+      return String(b.date || "").localeCompare(String(a.date || ""));
+    });
+    return copy;
+  }
+
+  function renderKolStats(list) {
+    if (!els.kolStatsGrid) return;
+    const experts = new Set(list.map((row) => row.kolName).filter(Boolean)).size;
+    const institutions = new Set(list.map((row) => row.institution).filter(Boolean)).size;
+    const pubmed = list.filter((row) => row.infoSource === "PubMed").length;
+    const wechat = list.filter((row) => row.infoSource === "微信公众号").length;
+    const productInfo = list.filter((row) => row.productInfo).length;
+    const items = [
+      ["当前结果", list.length],
+      ["专家", experts],
+      ["机构", institutions],
+      ["PubMed", pubmed],
+      ["微信", wechat],
+      ["有产品信息", productInfo],
+    ];
+    els.kolStatsGrid.replaceChildren(
+      ...items.map(([label, value]) => {
+        const card = document.createElement("div");
+        card.className = "stat";
+        const labelNode = document.createElement("span");
+        labelNode.textContent = label;
+        const valueNode = document.createElement("strong");
+        valueNode.textContent = Number(value).toLocaleString("zh-CN");
+        card.append(labelNode, valueNode);
+        return card;
+      }),
+    );
+  }
+
+  function compactText(text, limit = 180) {
+    const value = String(text || "").replace(/\s+/g, " ").trim();
+    return value.length > limit ? `${value.slice(0, limit)}...` : value;
+  }
+
+  function makeKolMeta(label, value) {
+    const item = document.createElement("span");
+    item.className = "kol-meta-item";
+    const strong = document.createElement("strong");
+    strong.textContent = label;
+    const text = document.createElement("em");
+    text.textContent = value || "-";
+    item.append(strong, text);
+    return item;
+  }
+
+  function renderKolCard(row) {
+    const card = document.createElement("article");
+    card.className = "kol-card";
+    const head = document.createElement("div");
+    head.className = "kol-card-head";
+    const titleWrap = document.createElement("div");
+    const eyebrow = document.createElement("div");
+    eyebrow.className = "kol-card-eyebrow";
+    eyebrow.append(miniPill(row.type || "资料"), miniPill(row.infoSource || "来源"));
+    const title = document.createElement("h3");
+    title.textContent = row.title || "未命名记录";
+    titleWrap.append(eyebrow, title);
+    const date = document.createElement("time");
+    date.textContent = row.date || "-";
+    head.append(titleWrap, date);
+
+    const expert = document.createElement("div");
+    expert.className = "kol-expert-line";
+    const expertName = document.createElement("strong");
+    expertName.textContent = row.kolName || "未定位专家";
+    const expertMeta = document.createElement("span");
+    expertMeta.textContent = [row.institution, row.department].filter(Boolean).join(" · ") || "机构未标注";
+    expert.append(expertName, expertMeta);
+
+    const metaGrid = document.createElement("div");
+    metaGrid.className = "kol-meta-grid";
+    metaGrid.append(
+      makeKolMeta("产品", row.product),
+      makeKolMeta("来源", row.sourceName || row.infoSource),
+      makeKolMeta("地区", [row.province, row.city].filter(Boolean).join(" / ")),
+      makeKolMeta("管理", row.management2026 || row.managementType),
+    );
+
+    const summary = document.createElement("p");
+    summary.className = "kol-summary";
+    summary.textContent = compactText(row.mainContent || row.abstract, 230) || "暂无内容概要。";
+
+    const productInfo = document.createElement("div");
+    productInfo.className = "kol-product-info";
+    if (row.productInfo) {
+      row.productInfo.split("；").filter(Boolean).forEach((item) => productInfo.appendChild(miniPill(item)));
+    } else {
+      productInfo.appendChild(miniPill("未提取产品信息"));
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "kol-card-actions";
+    const detailButton = document.createElement("button");
+    detailButton.type = "button";
+    detailButton.className = "icon-button";
+    detailButton.textContent = kolState.selectedId === row.id ? "收起详情" : "查看详情";
+    detailButton.addEventListener("click", () => {
+      kolState.selectedId = kolState.selectedId === row.id ? null : row.id;
+      renderKolRows(filteredKolRows);
+    });
+    actions.appendChild(detailButton);
+    const sourceUrl = validHttpUrl(row.link);
+    if (sourceUrl) {
+      const link = document.createElement("a");
+      link.className = "source-link kol-source-link";
+      link.href = sourceUrl;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>打开原文';
+      actions.appendChild(link);
+    }
+
+    card.append(head, expert, metaGrid, productInfo, summary, actions);
+
+    if (kolState.selectedId === row.id) {
+      const detail = document.createElement("dl");
+      detail.className = "kol-detail";
+      [
+        ["摘要", row.abstract],
+        ["全部作者", row.authors],
+        ["论文身份", row.paperRole],
+        ["PMID", row.pmid],
+        ["DOI", row.doi],
+        ["匹配说明", row.matchNote],
+      ].forEach(([label, value]) => {
+        if (!value) return;
+        const dt = document.createElement("dt");
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.textContent = value;
+        detail.append(dt, dd);
+      });
+      if (detail.children.length) card.appendChild(detail);
+    }
+    return card;
+  }
+
+  function renderKolRows(list) {
+    if (!els.kolResultBody) return;
+    const pageCount = Math.max(1, Math.ceil(list.length / kolState.pageSize));
+    kolState.page = Math.min(kolState.page, pageCount);
+    const start = (kolState.page - 1) * kolState.pageSize;
+    const pageRows = list.slice(start, start + kolState.pageSize);
+    if (!pageRows.length) {
+      const empty = document.createElement("div");
+      empty.className = "kol-empty";
+      empty.textContent = "没有符合条件的KOL记录";
+      els.kolResultBody.replaceChildren(empty);
+    } else {
+      els.kolResultBody.replaceChildren(...pageRows.map(renderKolCard));
+    }
+    els.kolResultCount.textContent = `${list.length.toLocaleString("zh-CN")} 条`;
+    els.kolPageInfo.textContent = `${kolState.page} / ${pageCount}`;
+    els.kolPrevPage.disabled = kolState.page <= 1;
+    els.kolNextPage.disabled = kolState.page >= pageCount;
+  }
+
+  function renderKolActiveFilters() {
+    if (!els.kolActiveFilters) return;
+    const bits = [];
+    if (kolState.query) bits.push("关键词");
+    if (kolState.product !== "全部") bits.push(kolState.product);
+    if (kolState.type !== "全部") bits.push(kolState.type);
+    if (kolState.infoSource !== "全部") bits.push(kolState.infoSource);
+    if (kolState.sourceName !== "全部") bits.push(kolState.sourceName);
+    if (kolState.productInfoOnly) bits.push("有产品信息");
+    els.kolActiveFilters.textContent = bits.length ? `| ${bits.join(" · ")}` : "";
+  }
+
+  function exportKolCsv() {
+    const columns = [
+      ["信息来源", "infoSource"],
+      ["类型", "type"],
+      ["KOL姓名", "kolName"],
+      ["KOL所属医院/机构", "institution"],
+      ["科室", "department"],
+      ["产品", "product"],
+      ["标题", "title"],
+      ["来源名称", "sourceName"],
+      ["日期", "date"],
+      ["内容概要/主要观点", "mainContent"],
+      ["产品信息（化学名）", "productInfo"],
+      ["摘要", "abstract"],
+      ["链接", "link"],
+      ["PMID", "pmid"],
+      ["DOI", "doi"],
+    ];
+    const lines = [columns.map(([label]) => csvEscape(label)).join(",")];
+    filteredKolRows.forEach((row) => {
+      lines.push(columns.map(([, key]) => csvEscape(row[key])).join(","));
+    });
+    const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "KOL信息查询_筛选结果.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderKol() {
+    filteredKolRows = sortKolRows(kolRows.filter(kolMatches));
+    if (kolState.selectedId && !filteredKolRows.some((row) => row.id === kolState.selectedId)) kolState.selectedId = null;
+    renderKolStats(filteredKolRows);
+    renderKolActiveFilters();
+    renderKolRows(filteredKolRows);
+  }
+
   function render() {
     filteredRows = sortRows(rows.filter(rowMatches));
     if (pageState.selectedId && !filteredRows.some((row) => row.id === pageState.selectedId)) clearDetail(false);
@@ -1398,8 +1922,10 @@
   }
 
   buildFilters();
+  buildKolFilters();
   wireEvents();
   renderHomeStats();
   setOverview("products", false);
   render();
+  renderKol();
 })();
