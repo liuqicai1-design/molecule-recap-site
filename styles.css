@@ -499,6 +499,11 @@ h1 {
   background: #f3f8f7;
 }
 
+.qa-reference-card.wechat-fallback-link {
+  border-color: #e4c483;
+  background: #fff8e9;
+}
+
 .qa-reference-card:target,
 .qa-reference-card.ref-focused {
   border-color: var(--teal);
@@ -1372,6 +1377,15 @@ tbody tr.selected td {
   background: #e7f1ef;
 }
 
+.row-link.wechat-fallback-link {
+  color: #8a5a10;
+  background: #fff5df;
+}
+
+.row-link.wechat-fallback-link:hover {
+  background: #ffe9b8;
+}
+
 .pager {
   justify-content: center;
   min-height: 54px;
@@ -1431,6 +1445,15 @@ dd {
 
 .source-link:hover {
   background: var(--teal-dark);
+}
+
+.source-link.wechat-fallback-link {
+  color: #3a2a0a;
+  background: #f4c45b;
+}
+
+.source-link.wechat-fallback-link:hover {
+  background: #e0aa32;
 }
 
 .empty-row td {
@@ -2325,6 +2348,10 @@ tbody tr.selected td {
 
 .report-card-link:hover {
   text-decoration: underline;
+}
+
+.report-card-link.wechat-fallback-link {
+  color: #8a5a10;
 }
 
 .report-term-list {

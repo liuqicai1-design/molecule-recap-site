@@ -1064,6 +1064,65 @@
     }
   }
 
+  function isTemporaryWechatUrl(url) {
+    const sourceUrl = validHttpUrl(url);
+    if (!sourceUrl) return false;
+    try {
+      const parsed = new URL(sourceUrl);
+      return parsed.hostname === "mp.weixin.qq.com"
+        && parsed.searchParams.get("src") === "11"
+        && parsed.searchParams.has("timestamp")
+        && parsed.searchParams.has("signature");
+    } catch {
+      return false;
+    }
+  }
+
+  function wechatSearchUrl(title, sourceName) {
+    const query = [title, sourceName].filter(Boolean).join(" ");
+    if (!query) return "";
+    return `https://weixin.sogou.com/weixin?type=2&s_from=input&query=${encodeURIComponent(query)}`;
+  }
+
+  function resolvedSourceLink(record, options = {}) {
+    const rawUrl = options.url ?? record?.link ?? record?.["原始链接"];
+    const sourceUrl = validHttpUrl(rawUrl);
+    if (!sourceUrl) return { url: "", label: "", title: "", isWechatFallback: false };
+    if (!isTemporaryWechatUrl(sourceUrl)) {
+      return {
+        url: sourceUrl,
+        label: options.defaultLabel || "打开原文",
+        title: options.defaultTitle || "打开原始链接",
+        isWechatFallback: false,
+      };
+    }
+    const fallbackUrl = wechatSearchUrl(record?.title || record?.["标题/事件"], record?.sourceName || record?.source || record?.["来源"]);
+    if (!fallbackUrl) {
+      return {
+        url: sourceUrl,
+        label: "微信链接已过期",
+        title: "微信临时链接已过期，当前记录缺少标题，无法自动检索",
+        isWechatFallback: true,
+      };
+    }
+    return {
+      url: fallbackUrl,
+      label: "重新检索原文",
+      title: "原微信临时链接已过期，已按标题重新检索原文",
+      isWechatFallback: true,
+    };
+  }
+
+  function applySourceLink(anchor, action) {
+    if (!anchor || !action?.url) return false;
+    anchor.href = action.url;
+    anchor.target = "_blank";
+    anchor.rel = "noreferrer";
+    anchor.title = action.title || "";
+    anchor.classList.toggle("wechat-fallback-link", Boolean(action.isWechatFallback));
+    return true;
+  }
+
   function linkAnswerReferences(text) {
     const content = String(text || "");
     const parts = [];
@@ -1144,15 +1203,12 @@
     const list = document.createElement("div");
     list.className = "qa-reference-list";
     contexts.forEach((item) => {
-      const sourceUrl = validHttpUrl(item.link);
-      const card = document.createElement(sourceUrl ? "a" : "article");
+      const sourceAction = resolvedSourceLink(item);
+      const card = document.createElement(sourceAction.url ? "a" : "article");
       card.id = `qa-ref-${item.ref}`;
-      card.className = sourceUrl ? "qa-reference-card linked" : "qa-reference-card";
-      if (sourceUrl) {
-        card.href = sourceUrl;
-        card.target = "_blank";
-        card.rel = "noreferrer";
-        card.title = "打开原始链接";
+      card.className = sourceAction.url ? "qa-reference-card linked" : "qa-reference-card";
+      if (sourceAction.url) {
+        applySourceLink(card, sourceAction);
       }
       const title = document.createElement("strong");
       const evidenceLabel = item.contextType === "kol"
@@ -1163,9 +1219,9 @@
       body.textContent = item.title;
       const metaLine = document.createElement("span");
       metaLine.textContent = [item.date, item.competitor].filter(Boolean).join(" · ");
-      if (sourceUrl) {
+      if (sourceAction.url) {
         const action = document.createElement("em");
-        action.textContent = "打开原文";
+        action.textContent = sourceAction.label || "打开原文";
         card.append(title, body, metaLine, action);
       } else {
         card.append(title, body, metaLine);
@@ -1511,12 +1567,20 @@
       }),
     );
 
+    const sourceAction = resolvedSourceLink({
+      ...row,
+      title: row["标题/事件"],
+      source: row["来源"],
+      link: row["原始链接"],
+    }, { defaultLabel: "打开原始链接" });
     const sourceLink = document.createElement("a");
     sourceLink.className = "source-link";
-    sourceLink.href = row["原始链接"] || "#";
-    sourceLink.target = "_blank";
-    sourceLink.rel = "noreferrer";
-    sourceLink.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>打开原始链接';
+    if (applySourceLink(sourceLink, sourceAction)) {
+      sourceLink.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>${sourceAction.label || "打开原始链接"}`;
+    } else {
+      sourceLink.href = "#";
+      sourceLink.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>暂无原始链接';
+    }
     sourceLink.addEventListener("click", (event) => event.stopPropagation());
 
     content.append(head, definitionList, sourceLink);
@@ -1570,11 +1634,14 @@
         const linkCell = document.createElement("td");
         const link = document.createElement("a");
         link.className = "row-link";
-        link.href = row["原始链接"];
-        link.target = "_blank";
-        link.rel = "noreferrer";
-        link.title = "打开原始链接";
-        link.setAttribute("aria-label", "打开原始链接");
+        const sourceAction = resolvedSourceLink({
+          ...row,
+          title: row["标题/事件"],
+          source: row["来源"],
+          link: row["原始链接"],
+        }, { defaultLabel: "打开原始链接" });
+        applySourceLink(link, sourceAction);
+        link.setAttribute("aria-label", sourceAction.label || "打开原始链接");
         link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
         link.addEventListener("click", (event) => event.stopPropagation());
         linkCell.appendChild(link);
@@ -1681,7 +1748,17 @@
     ];
     const lines = [columns.map(csvEscape).join(",")];
     filteredRows.forEach((row) => {
-      lines.push(columns.map((column) => csvEscape(row[column])).join(","));
+      lines.push(columns.map((column) => {
+        if (column === "原始链接") {
+          return csvEscape(resolvedSourceLink({
+            ...row,
+            title: row["标题/事件"],
+            source: row["来源"],
+            link: row["原始链接"],
+          }).url || row[column]);
+        }
+        return csvEscape(row[column]);
+      }).join(","));
     });
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -1823,14 +1900,12 @@
       renderKolRows(filteredKolRows);
     });
     actions.appendChild(detailButton);
-    const sourceUrl = validHttpUrl(row.link);
-    if (sourceUrl) {
+    const sourceAction = resolvedSourceLink(row);
+    if (sourceAction.url) {
       const link = document.createElement("a");
       link.className = "source-link kol-source-link";
-      link.href = sourceUrl;
-      link.target = "_blank";
-      link.rel = "noreferrer";
-      link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>打开原文';
+      applySourceLink(link, sourceAction);
+      link.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>${sourceAction.label || "打开原文"}`;
       actions.appendChild(link);
     }
 
@@ -1911,7 +1986,10 @@
     ];
     const lines = [columns.map(([label]) => csvEscape(label)).join(",")];
     filteredKolRows.forEach((row) => {
-      lines.push(columns.map(([, key]) => csvEscape(row[key])).join(","));
+      lines.push(columns.map(([, key]) => {
+        if (key === "link") return csvEscape(resolvedSourceLink(row).url || row[key]);
+        return csvEscape(row[key]);
+      }).join(","));
     });
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -1998,14 +2076,12 @@
       impact.textContent = item.impact;
       card.appendChild(impact);
     }
-    const url = validHttpUrl(item.link);
-    if (url) {
+    const sourceAction = resolvedSourceLink(item);
+    if (sourceAction.url) {
       const link = document.createElement("a");
       link.className = "report-card-link";
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noreferrer";
-      link.textContent = "打开原文";
+      applySourceLink(link, sourceAction);
+      link.textContent = sourceAction.label || "打开原文";
       card.appendChild(link);
     }
     return card;
