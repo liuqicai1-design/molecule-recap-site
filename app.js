@@ -227,6 +227,14 @@
         row.mainContent,
         row.productInfo,
         row.abstract,
+        row.wechatCacheStatus,
+        row.wechatCacheTitle,
+        row.wechatCacheAccount,
+        row.wechatCacheSummary,
+        row.wechatCacheExcerpt,
+        row.wechatCacheNote,
+        row.wechatLinkRepairStatus,
+        row.wechatLinkRepairNote,
         row.pmid,
         row.doi,
         row.authors,
@@ -894,7 +902,11 @@
   function compactKolContext(row, index) {
     const expertLine = [row.kolName, row.institution, row.department].filter(Boolean).join(" · ");
     const sourceLine = [row.infoSource, row.sourceName].filter(Boolean).join(" / ");
-    const summary = [row.mainContent, row.abstract].filter(Boolean).join("\n");
+    const summary = [
+      kolDisplaySummary(row),
+      row.wechatCacheExcerpt,
+      row.abstract,
+    ].filter(Boolean).join("\n");
     return {
       contextType: "kol",
       ref: index + 1,
@@ -912,6 +924,8 @@
         row.kolName ? `专家：${row.kolName}` : "",
         row.institution ? `机构：${row.institution}` : "",
         row.productInfo ? `产品信息：${row.productInfo}` : "",
+        row.wechatCacheStatus ? `微信正文：${row.wechatCacheStatus}` : "",
+        row.wechatCacheNote ? `链接说明：${row.wechatCacheNote}` : "",
         row.paperRole ? `论文身份：${row.paperRole}` : "",
       ].filter(Boolean).join("；"),
       evidence: row.type || "资料",
@@ -919,6 +933,8 @@
       link: row.link,
       pmid: row.pmid,
       doi: row.doi,
+      cacheStatus: row.wechatCacheStatus,
+      cacheNote: row.wechatCacheNote,
     };
   }
 
@@ -1105,10 +1121,13 @@
         isWechatFallback: true,
       };
     }
+    const hasCache = record?.wechatCacheStatus === "已缓存全文";
     return {
       url: fallbackUrl,
-      label: "重新检索原文",
-      title: "原微信临时链接已过期，已按标题重新检索原文",
+      label: hasCache ? "重新检索原文（已缓存）" : "重新检索原文",
+      title: hasCache
+        ? "原微信临时链接已过期；本记录已缓存正文摘要，外链按标题重新检索"
+        : "原微信临时链接已过期，已按标题重新检索原文",
       isWechatFallback: true,
     };
   }
@@ -1218,7 +1237,7 @@
       const body = document.createElement("p");
       body.textContent = item.title;
       const metaLine = document.createElement("span");
-      metaLine.textContent = [item.date, item.competitor].filter(Boolean).join(" · ");
+      metaLine.textContent = [item.date, item.competitor, item.cacheStatus].filter(Boolean).join(" · ");
       if (sourceAction.url) {
         const action = document.createElement("em");
         action.textContent = sourceAction.label || "打开原文";
@@ -1833,6 +1852,10 @@
     return value.length > limit ? `${value.slice(0, limit)}...` : value;
   }
 
+  function kolDisplaySummary(row) {
+    return row.wechatCacheSummary || row.mainContent || row.abstract || "";
+  }
+
   function makeKolMeta(label, value) {
     const item = document.createElement("span");
     item.className = "kol-meta-item";
@@ -1879,7 +1902,7 @@
 
     const summary = document.createElement("p");
     summary.className = "kol-summary";
-    summary.textContent = compactText(row.mainContent || row.abstract, 230) || "暂无内容概要。";
+    summary.textContent = compactText(kolDisplaySummary(row), 260) || "暂无内容概要。";
 
     const productInfo = document.createElement("div");
     productInfo.className = "kol-product-info";
@@ -1887,6 +1910,11 @@
       row.productInfo.split("；").filter(Boolean).forEach((item) => productInfo.appendChild(miniPill(item)));
     } else {
       productInfo.appendChild(miniPill("未提取产品信息"));
+    }
+    if (row.wechatCacheStatus) {
+      const cachePill = miniPill(row.wechatCacheChars ? `${row.wechatCacheStatus} · ${Number(row.wechatCacheChars).toLocaleString("zh-CN")}字` : row.wechatCacheStatus);
+      cachePill.classList.add("kol-cache-pill");
+      productInfo.appendChild(cachePill);
     }
 
     const actions = document.createElement("div");
@@ -1915,6 +1943,15 @@
       const detail = document.createElement("dl");
       detail.className = "kol-detail";
       [
+        ["内容概要", kolDisplaySummary(row)],
+        ["微信缓存状态", row.wechatCacheStatus],
+        ["缓存标题", row.wechatCacheTitle],
+        ["缓存公众号", row.wechatCacheAccount],
+        ["缓存发布时间", row.wechatCachePublishTime || row.wechatCachePublishDate],
+        ["缓存正文长度", row.wechatCacheChars ? `${Number(row.wechatCacheChars).toLocaleString("zh-CN")} 字` : ""],
+        ["链接修复说明", row.wechatCacheNote || row.wechatLinkRepairNote],
+        ["全文匹配说明", row.wechatFulltextMatchNote],
+        ["微信正文片段", row.wechatCacheExcerpt],
         ["摘要", row.abstract],
         ["全部作者", row.authors],
         ["论文身份", row.paperRole],
@@ -1978,6 +2015,13 @@
       ["来源名称", "sourceName"],
       ["日期", "date"],
       ["内容概要/主要观点", "mainContent"],
+      ["微信缓存状态", "wechatCacheStatus"],
+      ["缓存标题", "wechatCacheTitle"],
+      ["缓存公众号", "wechatCacheAccount"],
+      ["缓存发布时间", "wechatCachePublishTime"],
+      ["缓存正文长度", "wechatCacheChars"],
+      ["链接修复说明", "wechatCacheNote"],
+      ["微信正文片段", "wechatCacheExcerpt"],
       ["产品信息（化学名）", "productInfo"],
       ["摘要", "abstract"],
       ["链接", "link"],

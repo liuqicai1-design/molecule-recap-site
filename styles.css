@@ -2617,9 +2617,16 @@ tbody tr.selected td {
   color: var(--teal-dark);
 }
 
+.kol-product-info .kol-cache-pill {
+  background: #fff4df;
+  color: #7b4b13;
+  border-color: #ead0a4;
+}
+
 .kol-summary {
   color: #2b3d40;
   font-size: 14px;
+  line-height: 1.75;
 }
 
 .kol-card-actions {
@@ -2634,6 +2641,22 @@ tbody tr.selected td {
   margin: 2px 0 0;
   padding-top: 12px;
   border-top: 1px solid var(--soft-line);
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px 14px;
+  color: #243638;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.kol-detail dt {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.kol-detail dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .kol-empty {
