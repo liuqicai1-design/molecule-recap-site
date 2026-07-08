@@ -2045,6 +2045,46 @@
     return list;
   }
 
+  function reportExecutiveSummary(summary) {
+    const wrap = document.createElement("div");
+    wrap.className = "report-executive-summary";
+    if (!summary) {
+      const empty = document.createElement("p");
+      empty.className = "report-empty";
+      empty.textContent = "暂无管理层摘要。";
+      wrap.appendChild(empty);
+      return wrap;
+    }
+
+    if (summary.headline) {
+      const headline = document.createElement("p");
+      headline.className = "report-executive-headline";
+      headline.textContent = summary.headline;
+      wrap.appendChild(headline);
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "report-executive-grid";
+    [
+      ["发生了什么", summary.whatHappened],
+      ["关注什么", summary.watch],
+      ["为什么关注", summary.why],
+      ["建议动作", summary.actions],
+    ].forEach(([label, value]) => {
+      if (!value) return;
+      const card = document.createElement("div");
+      card.className = "report-executive-card";
+      const title = document.createElement("strong");
+      title.textContent = label;
+      const body = document.createElement("p");
+      body.textContent = Array.isArray(value) ? value.join("；") : value;
+      card.append(title, body);
+      grid.appendChild(card);
+    });
+    if (grid.children.length) wrap.appendChild(grid);
+    return wrap;
+  }
+
   function reportEvidenceCard(item, type) {
     const card = document.createElement("article");
     card.className = `report-evidence-card ${type || ""}`;
@@ -2150,6 +2190,9 @@
       reportMetric("涉及机构", report.metrics.institutions),
     );
 
+    const executive = reportBlock("管理层摘要", "executive");
+    executive.appendChild(reportExecutiveSummary(report.executiveSummary));
+
     const conclusion = reportBlock("本月结论", "conclusion");
     conclusion.appendChild(reportList(report.conclusion));
 
@@ -2200,7 +2243,7 @@
     const follow = reportBlock("建议跟进", "follow");
     follow.appendChild(reportList(report.followups));
 
-    els.reportReader.replaceChildren(head, metrics, conclusion, focus, kolBlock, terms, follow);
+    els.reportReader.replaceChildren(head, metrics, executive, conclusion, focus, kolBlock, terms, follow);
   }
 
   function renderReports() {
