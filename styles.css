@@ -2251,9 +2251,9 @@ tbody tr.selected td {
 }
 
 .report-block h3 {
-  margin-bottom: 12px;
+  margin-bottom: 18px;
   color: var(--teal-dark);
-  font-size: 19px;
+  font-size: 22px;
 }
 
 .report-list {
@@ -2271,51 +2271,91 @@ tbody tr.selected td {
 
 .report-executive-summary {
   display: grid;
-  gap: 14px;
+  gap: 22px;
 }
 
 .report-executive-headline {
   margin: 0;
-  padding: 16px 18px;
+  max-width: 1280px;
+  padding: 24px 30px 24px 34px;
   color: #062f2b;
   background:
     linear-gradient(135deg, rgba(41, 190, 156, 0.14), rgba(255, 255, 255, 0.88)),
     #f5fbf8;
   border: 1px solid rgba(15, 118, 109, 0.22);
-  border-left: 5px solid var(--teal);
+  border-left: 7px solid var(--teal);
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 900;
-  line-height: 1.65;
+  line-height: 1.82;
+}
+
+.report-executive-headline::before {
+  content: "核心判断";
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(15, 118, 109, 0.82);
+  font-size: 13px;
+  font-weight: 950;
 }
 
 .report-executive-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .report-executive-card {
-  min-height: 134px;
-  padding: 14px 15px;
+  min-height: 210px;
+  padding: 24px 26px;
   background: #ffffff;
   border: 1px solid var(--soft-line);
   border-radius: 8px;
 }
 
 .report-executive-card strong {
-  display: block;
-  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
   color: var(--teal-dark);
-  font-size: 14px;
+  font-size: 18px;
+}
+
+.report-executive-card strong::before {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  color: #ffffff;
+  background: var(--teal);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.report-executive-card:nth-child(1) strong::before {
+  content: "1";
+}
+
+.report-executive-card:nth-child(2) strong::before {
+  content: "2";
+}
+
+.report-executive-card:nth-child(3) strong::before {
+  content: "3";
+}
+
+.report-executive-card:nth-child(4) strong::before {
+  content: "4";
 }
 
 .report-executive-card p {
   margin: 0;
   color: #2f4245;
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 1.62;
+  font-size: 16px;
+  font-weight: 760;
+  line-height: 1.86;
 }
 
 .report-evidence-grid {
