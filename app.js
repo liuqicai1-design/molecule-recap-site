@@ -828,9 +828,12 @@
     const common = new Set(["clinical", "pubmed", "study", "trial", "trials", "phase", "oral"]);
     const normalized = String(question || "").toLowerCase();
     const latin = (normalized.match(/[a-z0-9][a-z0-9\-_/]{2,}/g) || [])
-      .filter((token) => !common.has(token));
+      .filter((token) => !common.has(token) && !/^\d+$/.test(token));
     const productHits = PRODUCT_ORDER.filter((product) => normalized.includes(product));
-    return Array.from(new Set([...latin, ...productHits]));
+    const kolHits = kolRows
+      .map((row) => String(row.kolName || "").trim())
+      .filter((name) => name.length >= 2 && normalized.includes(name.toLowerCase()));
+    return Array.from(new Set([...latin, ...productHits, ...kolHits]));
   }
 
   function qaScore(row, tokens, question) {
@@ -1005,11 +1008,17 @@
 
   function retrieveKolQuestionContext(question) {
     if (!kolRows.length) return [];
+    const normalized = String(question || "").toLowerCase();
     const tokens = questionTokens(question);
     const strictTokens = qaStrictTopicTokens(question);
-    const strictRows = strictTokens.length
-      ? kolRows.filter((row) => strictTokens.some((token) => kolQaText(row).includes(token)))
-      : [];
+    const namedKols = Array.from(new Set(kolRows
+      .map((row) => String(row.kolName || "").trim())
+      .filter((name) => name.length >= 2 && normalized.includes(name.toLowerCase()))));
+    const strictRows = namedKols.length
+      ? kolRows.filter((row) => namedKols.includes(String(row.kolName || "").trim()))
+      : strictTokens.length
+        ? kolRows.filter((row) => strictTokens.some((token) => kolQaText(row).includes(token)))
+        : [];
     const candidateRows = strictRows.length ? strictRows : kolRows;
     const scored = candidateRows
       .map((row) => ({ row, score: kolQaScore(row, tokens, question) }))
@@ -1038,9 +1047,17 @@
   function retrieveQuestionContext(question) {
     const productContexts = retrieveProductQuestionContext(question);
     const kolContexts = retrieveKolQuestionContext(question);
-    const ordered = questionLooksKol(question)
-      ? [...kolContexts, ...productContexts]
-      : [...productContexts, ...kolContexts];
+    const normalized = String(question || "").toLowerCase();
+    const namedKol = kolRows.some((row) => {
+      const name = String(row.kolName || "").trim().toLowerCase();
+      return name.length >= 2 && normalized.includes(name);
+    });
+    const namedProduct = PRODUCT_ORDER.some((product) => normalized.includes(product.toLowerCase()));
+    const ordered = namedKol && !namedProduct
+      ? kolContexts
+      : questionLooksKol(question)
+        ? [...kolContexts, ...productContexts]
+        : [...productContexts, ...kolContexts];
     const seen = new Set();
     return ordered
       .filter((item) => {
