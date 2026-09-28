@@ -1554,6 +1554,16 @@
     return td;
   }
 
+  function makeSummaryCell(text) {
+    const td = document.createElement("td");
+    td.className = "summary-cell";
+    const preview = document.createElement("span");
+    preview.className = "summary-preview";
+    preview.textContent = text || "";
+    td.appendChild(preview);
+    return td;
+  }
+
   function buildDetailContent(row) {
     const content = document.createElement("div");
     content.className = "detail-content";
@@ -1690,7 +1700,7 @@
           makeCell(displayCompetitorPath(row), "competitor-cell"),
           makeCell(displaySource(row["来源"]), "source-cell"),
           makeCell(row["标题/事件"], "title-cell"),
-          makeCell(row["核心内容摘要"], "summary-cell"),
+          makeSummaryCell(row["核心内容摘要"]),
           evidenceCell,
           followCell,
           linkCell,

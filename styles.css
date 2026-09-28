@@ -1315,6 +1315,14 @@ tbody tr.selected td {
   max-width: 680px;
 }
 
+.summary-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
